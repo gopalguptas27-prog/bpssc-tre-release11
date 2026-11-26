@@ -1,0 +1,600 @@
+{
+  "entities": {
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Trusted Main Admin registry entry.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID of the Main Admin." },
+        "displayName": { "type": "string", "description": "Display name of the administrator." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["uid", "displayName", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private User account profile, optional WhatsApp contact, and preferences (readable only by owner and group/main Admin; strictly isolated from other Users).",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID." },
+        "displayName": { "type": "string", "description": "Chosen User display name." },
+        "email": { "type": "string", "description": "Private account email visible only to owner and Admin." },
+        "whatsappNumber": { "type": "string", "description": "Optional normalized WhatsApp phone number (e.g., +91XXXXXXXXXX), visible only to owner and Admin." },
+        "photoBase64": { "type": "string", "description": "Optional compressed JPEG base64 profile photo." },
+        "activeGroupId": { "type": "string", "description": "Currently selected examination group ID." },
+        "role": { "type": "string", "enum": ["ASPIRANT", "QUESTION_CREATOR", "GROUP_ADMIN", "SUPER_ADMIN"] },
+        "languagePref": { "type": "string", "enum": ["BILINGUAL", "HINDI", "ENGLISH"] },
+        "publicSharing": { "type": "boolean", "description": "Whether result cards can be shared publicly." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["userId", "displayName", "role", "languagePref", "publicSharing", "createdAt", "updatedAt"]
+    },
+    "AdminContact": {
+      "title": "AdminContact",
+      "description": "Official Admin public contact card for User-to-Admin WhatsApp communication.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "adminUid": { "type": "string" },
+        "adminName": { "type": "string" },
+        "adminPhotoBase64": { "type": "string" },
+        "adminWhatsAppNumber": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["groupId", "adminUid", "adminName", "updatedAt"]
+    },
+    "InviteCode": {
+      "title": "InviteCode",
+      "description": "Direct lookup mapping an uppercase invitation code to a groupId.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "groupName": { "type": "string" },
+        "createdByUid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["groupId", "groupName", "createdByUid", "createdAt"]
+    },
+    "ExamGroup": {
+      "title": "ExamGroup",
+      "description": "Collaborative BPSSC TRE 4.0 examination group.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "inviteCode": { "type": "string" },
+        "createdByUid": { "type": "string" },
+        "createdByName": { "type": "string" },
+        "memberCount": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["name", "description", "inviteCode", "createdByUid", "createdByName", "memberCount", "createdAt", "updatedAt"]
+    },
+    "GroupMember": {
+      "title": "GroupMember",
+      "description": "Public group membership record and live ranking metrics (zero PII — never stores email or WhatsApp).",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoBase64": { "type": "string" },
+        "role": { "type": "string", "enum": ["ASPIRANT", "QUESTION_CREATOR", "GROUP_ADMIN", "SUPER_ADMIN"] },
+        "gsTestsAttempted": { "type": "integer" },
+        "gsTotalScore": { "type": "number" },
+        "gsAverageScore": { "type": "number" },
+        "gsHighestScore": { "type": "number" },
+        "gsLowestScore": { "type": "number" },
+        "latestGsScore": { "type": "number" },
+        "latestGsTestTitle": { "type": "string" },
+        "weeklyGsTotal": { "type": "number" },
+        "weeklyGsCount": { "type": "integer" },
+        "monthlyGsTotal": { "type": "number" },
+        "monthlyGsCount": { "type": "integer" },
+        "langScore": { "type": "number" },
+        "langHindiScore": { "type": "number" },
+        "langEnglishScore": { "type": "number" },
+        "langStatus": { "type": "string", "enum": ["NOT_ATTEMPTED", "PASS", "FAIL"] },
+        "previousRank": { "type": "integer" },
+        "publicSharing": { "type": "boolean" },
+        "joinedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["groupId", "userId", "displayName", "role", "gsTestsAttempted", "gsTotalScore", "gsAverageScore", "langStatus", "publicSharing", "joinedAt", "updatedAt"]
+    },
+    "ExamTest": {
+      "title": "ExamTest",
+      "description": "Admin-managed five-option MCQ test set (30Q Language, 40Q Common, 70Q Combined, 40Q Class 6-8 Math, 40Q Class 6-8 Science, 80Q Class 9-10 Math, 150Q Combined banks, or Practice Set) with Set Icon metadata.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "title": { "type": "string" },
+        "paperType": { "type": "string", "enum": ["LANGUAGE", "COMMON_GS", "COMBINED", "CLASS_6_8_MATH", "CLASS_6_8_SCIENCE", "CLASS_9_10_MATH_80", "CLASS_6_8_MATH_SCIENCE", "CLASS_9_10_MATH", "PRACTICE"] },
+        "difficulty": { "type": "string", "enum": ["EASY", "MODERATE", "HARD"] },
+        "status": { "type": "string", "enum": ["PENDING", "PUBLISHED", "REJECTED"] },
+        "creatorUid": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "creatorPhotoBase64": { "type": "string" },
+        "durationMinutes": { "type": "integer" },
+        "questionCount": { "type": "integer" },
+        "negativeMarkNumerator": { "type": "integer" },
+        "negativeMarkDenominator": { "type": "integer" },
+        "unattemptedPenalty": { "type": "boolean" },
+        "questions": { "type": "array" },
+        "attemptCount": { "type": "integer" },
+        "answerReleaseMode": { "type": "string", "enum": ["IMMEDIATE", "SCHEDULED"] },
+        "scheduledAt": { "type": "string" },
+        "approvedForAll": { "type": "boolean" },
+        "approvedMemberIds": { "type": "array" },
+        "visibleToUids": { "type": "array" },
+        "iconKey": { "type": "string" },
+        "customIconBase64": { "type": "string" },
+        "customIconUrl": { "type": "string" },
+        "bannerImageBase64": { "type": "string" },
+        "setType": { "type": "string" },
+        "classLevel": { "type": "string" },
+        "positiveMarks": { "type": "number" },
+        "optionEMode": { "type": "string" },
+        "cutoffMarks": { "type": "number" },
+        "pauseAllowed": { "type": "boolean" },
+        "langPassMarks": { "type": "number" },
+        "langMinHindi": { "type": "number" },
+        "langMinEnglish": { "type": "number" },
+        "langFailRankPolicy": { "type": "string" },
+        "tieBreakPolicy": { "type": "string" },
+        "assembledFromTestIds": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["groupId", "title", "paperType", "difficulty", "status", "creatorUid", "creatorName", "durationMinutes", "questionCount", "negativeMarkNumerator", "negativeMarkDenominator", "unattemptedPenalty", "questions", "attemptCount", "answerReleaseMode", "createdAt", "updatedAt"]
+    },
+    "TestAttempt": {
+      "title": "TestAttempt",
+      "description": "Immutable locked test attempt with strict Language vs Merit separation and 5-option evaluation.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "testId": { "type": "string" },
+        "testTitle": { "type": "string" },
+        "paperType": { "type": "string", "enum": ["LANGUAGE", "COMMON_GS", "COMBINED", "CLASS_6_8_MATH", "CLASS_6_8_SCIENCE", "CLASS_9_10_MATH_80", "CLASS_6_8_MATH_SCIENCE", "CLASS_9_10_MATH", "PRACTICE"] },
+        "userId": { "type": "string" },
+        "aspirantName": { "type": "string" },
+        "aspirantPhotoBase64": { "type": "string" },
+        "answers": { "type": "object" },
+        "correctCount": { "type": "integer" },
+        "incorrectCount": { "type": "integer" },
+        "dontKnowCount": { "type": "integer" },
+        "notAttemptedCount": { "type": "integer" },
+        "totalScore": { "type": "number" },
+        "maxMarks": { "type": "number" },
+        "percentage": { "type": "number" },
+        "negativeDeducted": { "type": "number" },
+        "subjectScores": { "type": "object" },
+        "hindiScore": { "type": "number" },
+        "englishScore": { "type": "number" },
+        "langPassed": { "type": "boolean" },
+        "timeSpentSeconds": { "type": "integer" },
+        "questionTimesSec": { "type": "object", "description": "Optional per-question time spent in seconds keyed by 0-based question index." },
+        "setType": { "type": "string" },
+        "meritMarks": { "type": "number" },
+        "totalMeritMarks": { "type": "number" },
+        "positiveMarksEarned": { "type": "number" },
+        "languageTotalMarks": { "type": "number" },
+        "languageStatus": { "type": "string" },
+        "meritCorrectCount": { "type": "integer" },
+        "meritIncorrectCount": { "type": "integer" },
+        "meritUnattemptedCount": { "type": "integer" },
+        "startedAtEpochMillis": { "type": "integer" },
+        "completionStatus": { "type": "string" },
+        "submittedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["groupId", "testId", "testTitle", "paperType", "userId", "aspirantName", "answers", "correctCount", "incorrectCount", "dontKnowCount", "notAttemptedCount", "totalScore", "maxMarks", "percentage", "negativeDeducted", "subjectScores", "timeSpentSeconds", "submittedAt"]
+    },
+    "SolutionReattemptRecord": {
+      "title": "SolutionReattemptRecord",
+      "description": "Isolated solution-mode practice reattempt record that never modifies immutable Original Attempt or rankings.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "testId": { "type": "string" },
+        "testTitle": { "type": "string" },
+        "userId": { "type": "string" },
+        "aspirantName": { "type": "string" },
+        "reattemptAnswers": { "type": "object" },
+        "correctCount": { "type": "integer" },
+        "wrongCount": { "type": "integer" },
+        "totalReattempted": { "type": "integer" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["groupId", "testId", "testTitle", "userId", "aspirantName", "reattemptAnswers", "correctCount", "wrongCount", "totalReattempted", "updatedAt"]
+    },
+    "BookmarkedQuestion": {
+      "title": "BookmarkedQuestion",
+      "description": "User-bookmarked revision question from live exam or solution review.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "userId": { "type": "string" },
+        "testId": { "type": "string" },
+        "testTitle": { "type": "string" },
+        "questionIndex": { "type": "integer" },
+        "questionNumber": { "type": "integer" },
+        "subject": { "type": "string" },
+        "questionText": { "type": "string" },
+        "correctOption": { "type": "string" },
+        "explanation": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["groupId", "userId", "testId", "testTitle", "questionIndex", "questionNumber", "subject", "questionText", "correctOption", "explanation", "createdAt"]
+    },
+    "CurrentAffairItem": {
+      "title": "CurrentAffairItem",
+      "description": "Daily Current Affairs image banner item synced across the group.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "title": { "type": "string" },
+        "summary": { "type": "string" },
+        "dateLabel": { "type": "string" },
+        "source": { "type": "string" },
+        "imageBase64": { "type": "string" },
+        "category": { "type": "string" },
+        "publishedByUid": { "type": "string" },
+        "publishedByName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["groupId", "title", "summary", "dateLabel", "source", "category", "publishedByUid", "publishedByName", "createdAt", "updatedAt"]
+    },
+    "DailyTargetTask": {
+      "title": "DailyTargetTask",
+      "description": "Admin-assigned Daily Set Work banner (Aaj Ka Target) linked to an existing test set with IST date rollover for missed yesterday tasks and next-day banner scheduling.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "testId": { "type": "string" },
+        "testTitle": { "type": "string" },
+        "targetDateIst": { "type": "string", "description": "IST date key yyyy-MM-dd" },
+        "bannerTitle": { "type": "string" },
+        "bannerSubtitle": { "type": "string" },
+        "bannerImageBase64": { "type": "string" },
+        "publishedByUid": { "type": "string" },
+        "publishedByName": { "type": "string" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["groupId", "testId", "testTitle", "targetDateIst", "bannerTitle", "publishedByUid", "publishedByName", "active", "createdAt", "updatedAt"]
+    },
+    "QuestionPoll": {
+      "title": "QuestionPoll",
+      "description": "Interactive photo-based 5-option question poll with creator-controlled answer release, spam reporting, and solution uploads.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "creatorUid": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "creatorPhotoBase64": { "type": "string" },
+        "questionTitle": { "type": "string" },
+        "description": { "type": "string" },
+        "imageBase64": { "type": "string" },
+        "options": { "type": "array" },
+        "status": { "type": "string", "enum": ["OPEN", "CLOSED", "FINALIZED"] },
+        "correctOptionIndex": { "type": "integer" },
+        "finalExplanation": { "type": "string" },
+        "solutionImages": { "type": "array" },
+        "solutionContributors": { "type": "array" },
+        "voteCounts": { "type": "array" },
+        "totalVotes": { "type": "integer" },
+        "reportCount": { "type": "integer" },
+        "reportedByUids": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["groupId", "creatorUid", "creatorName", "questionTitle", "options", "status", "correctOptionIndex", "voteCounts", "totalVotes", "createdAt", "updatedAt"]
+    },
+    "PollPrivateKey": {
+      "title": "PollPrivateKey",
+      "description": "Hidden correct answer key readable only by poll creator and admins prior to finalization.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "pollId": { "type": "string" },
+        "creatorUid": { "type": "string" },
+        "correctOptionIndex": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["groupId", "pollId", "creatorUid", "correctOptionIndex", "createdAt", "updatedAt"]
+    },
+    "PollVote": {
+      "title": "PollVote",
+      "description": "Single vote per user per poll enforcing duplicate vote prevention.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "pollId": { "type": "string" },
+        "userId": { "type": "string" },
+        "voterName": { "type": "string" },
+        "selectedOptionIndex": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["groupId", "pollId", "userId", "voterName", "selectedOptionIndex", "createdAt"]
+    },
+    "DiscussionComment": {
+      "title": "DiscussionComment",
+      "description": "Collaborative doubt discussion, reply, helpful answer flag, error report, or correction audit log entry.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["TEST", "POLL", "GENERAL"] },
+        "targetId": { "type": "string" },
+        "authorUid": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorPhotoBase64": { "type": "string" },
+        "message": { "type": "string" },
+        "commentType": { "type": "string", "enum": ["COMMENT", "REPLY", "SOLUTION", "REPORT_QUESTION", "REPORT_ANSWER", "CORRECTION_AUDIT"] },
+        "parentCommentId": { "type": "string" },
+        "solutionImageBase64": { "type": "string" },
+        "isHelpful": { "type": "boolean" },
+        "helpfulMarkedBy": { "type": "string" },
+        "resolved": { "type": "boolean" },
+        "resolvedByUid": { "type": "string" },
+        "resolvedNote": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["groupId", "targetType", "targetId", "authorUid", "authorName", "message", "commentType", "createdAt"]
+    },
+    "GroupNotification": {
+      "title": "GroupNotification",
+      "description": "Group announcement, exam alert, or app update notification.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "type": { "type": "string", "enum": ["TEST", "RESULT", "POLL", "DOUBT", "CURRENT_AFFAIRS", "RANKING", "ANNOUNCEMENT", "APP_UPDATE"] },
+        "senderUid": { "type": "string" },
+        "senderName": { "type": "string" },
+        "targetAction": { "type": "string" },
+        "dedupKey": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["groupId", "title", "body", "type", "senderUid", "senderName", "createdAt"]
+    },
+    "AppUpdateRelease": {
+      "title": "AppUpdateRelease",
+      "description": "Admin-published application update release metadata with version checks, SHA-256 verification, and safe HTTPS download link.",
+      "type": "object",
+      "properties": {
+        "versionName": { "type": "string" },
+        "versionCode": { "type": "integer" },
+        "title": { "type": "string" },
+        "releaseNotes": { "type": "string" },
+        "updateType": { "type": "string", "enum": ["NORMAL", "MANDATORY"] },
+        "minSupportedVersionCode": { "type": "integer" },
+        "downloadUrl": { "type": "string" },
+        "fileSizeBytes": { "type": "integer" },
+        "sha256Checksum": { "type": "string" },
+        "packageName": { "type": "string" },
+        "published": { "type": "boolean" },
+        "isActive": { "type": "boolean" },
+        "uploadedByUid": { "type": "string" },
+        "uploadedByName": { "type": "string" },
+        "groupId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["versionName", "versionCode", "title", "releaseNotes", "updateType", "minSupportedVersionCode", "downloadUrl", "fileSizeBytes", "published", "uploadedByUid", "uploadedByName", "createdAt", "updatedAt"]
+    },
+        "ContentViewRecord": {
+      "title": "ContentViewRecord",
+      "description": "Deduplicated per-user view record for Banners and Polls (one record per user per content item; Admin-only viewer inspection).",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "contentId": { "type": "string" },
+        "contentType": { "type": "string", "enum": ["BANNER", "POLL"] },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "viewedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["groupId", "contentId", "contentType", "userId", "userName", "viewedAt"]
+    },
+    "LiveExam": {
+      "title": "LiveExam",
+      "description": "Scheduled synchronized Live Exam linking to an existing question set via sourceSetId with per-exam security policies and registration windows.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "sourceSetId": { "type": "string" },
+        "sourceSetTitle": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "paperType": { "type": "string" },
+        "examDateIst": { "type": "string" },
+        "startTimeIst": { "type": "string" },
+        "startTimeEpochMillis": { "type": "integer" },
+        "durationMinutes": { "type": "integer" },
+        "endTimeEpochMillis": { "type": "integer" },
+        "registrationOpenEpochMillis": { "type": "integer" },
+        "registrationCloseEpochMillis": { "type": "integer" },
+        "resultPublishEpochMillis": { "type": "integer" },
+        "resultsPublishedManually": { "type": "boolean" },
+        "totalQuestions": { "type": "integer" },
+        "totalMarks": { "type": "number" },
+        "negativeMarkNumerator": { "type": "integer" },
+        "negativeMarkDenominator": { "type": "integer" },
+        "eligibilityType": { "type": "string", "enum": ["ALL_USERS", "REGISTERED_ONLY"] },
+        "maxParticipants": { "type": "integer" },
+        "lateEntryAllowed": { "type": "boolean" },
+        "lateEntryCutoffMinutes": { "type": "integer" },
+        "secureModeEnabled": { "type": "boolean" },
+        "dynamicWatermark": { "type": "boolean" },
+        "focusLossDetection": { "type": "boolean" },
+        "copyPasteBlock": { "type": "boolean" },
+        "navigationExitLock": { "type": "boolean" },
+        "warningLimit": { "type": "integer" },
+        "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "CANCELLED", "COMPLETED"] },
+        "createdByUid": { "type": "string" },
+        "createdByName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "groupId", "sourceSetId", "sourceSetTitle", "title", "category", "paperType",
+        "startTimeEpochMillis", "durationMinutes", "endTimeEpochMillis",
+        "registrationOpenEpochMillis", "registrationCloseEpochMillis", "resultPublishEpochMillis",
+        "totalQuestions", "totalMarks", "negativeMarkNumerator", "negativeMarkDenominator",
+        "eligibilityType", "lateEntryAllowed", "secureModeEnabled", "warningLimit",
+        "status", "createdByUid", "createdByName", "createdAt", "updatedAt"
+      ]
+    },
+    "LiveExamSession": {
+      "title": "LiveExamSession",
+      "description": "Student registration, waiting room status, active live exam progress, security violation log, and Admin moderation status keyed by liveExamId_userId.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "liveExamId": { "type": "string" },
+        "sourceSetId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "status": { "type": "string", "enum": ["REGISTERED", "WAITING_ROOM", "ACTIVE", "SUBMITTED", "FLAGGED", "APPROVED", "DISQUALIFIED"] },
+        "answeredCount": { "type": "integer" },
+        "totalQuestions": { "type": "integer" },
+        "currentQuestionIndex": { "type": "integer" },
+        "savedAnswers": { "type": "object" },
+        "violationCount": { "type": "integer" },
+        "violationLogs": { "type": "array" },
+        "finalFiveMinAlertShown": { "type": "boolean" },
+        "score": { "type": "number" },
+        "maxMarks": { "type": "number" },
+        "adminModerationNote": { "type": "string" },
+        "moderatedByUid": { "type": "string" },
+        "registeredAtEpochMillis": { "type": "integer" },
+        "startedAtEpochMillis": { "type": "integer" },
+        "submittedAtEpochMillis": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "groupId", "liveExamId", "sourceSetId", "userId", "userName", "status",
+        "answeredCount", "totalQuestions", "violationCount", "violationLogs",
+        "createdAt", "updatedAt"
+      ]
+    },
+    "CategoryIconConfig": {
+      "title": "CategoryIconConfig",
+      "description": "Admin-managed default icon (animated GIF, transparent PNG, JPG, or built-in icon) for one of the 7 official TRE 4.0 test categories.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "categoryKey": {
+          "type": "string",
+          "enum": ["LANGUAGE", "COMMON", "LANGUAGE_COMMON", "MATHEMATICS", "SCIENCE", "FULL_MATHS_SCIENCE", "FULL_MATHS"]
+        },
+        "iconKey": { "type": "string" },
+        "customIconBase64": { "type": "string" },
+        "updatedByUid": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["groupId", "categoryKey", "updatedByUid", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Main Admin role registry."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private User profile, optional WhatsApp contact, and preferences."
+    },
+    "/inviteCodes/{code}": {
+      "schema": { "$ref": "#/entities/InviteCode" },
+      "description": "Direct lookup from uppercase invitation code to group."
+    },
+    "/appUpdates/{updateId}": {
+      "schema": { "$ref": "#/entities/AppUpdateRelease" },
+      "description": "Admin-managed app update releases readable by signed-in users."
+    },
+    "/groups/{groupId}": {
+      "schema": { "$ref": "#/entities/ExamGroup" },
+      "description": "Centralized examination groups."
+    },
+    "/groups/{groupId}/adminContact/{contactId}": {
+      "schema": { "$ref": "#/entities/AdminContact" },
+      "description": "Official Admin contact profile for User-to-Admin WhatsApp communication."
+    },
+    "/groups/{groupId}/members/{memberId}": {
+      "schema": { "$ref": "#/entities/GroupMember" },
+      "description": "Public group members and live leaderboard scores."
+    },
+    "/groups/{groupId}/tests/{testId}": {
+      "schema": { "$ref": "#/entities/ExamTest" },
+      "description": "Admin-created question sets and published exams."
+    },
+    "/groups/{groupId}/attempts/{attemptId}": {
+      "schema": { "$ref": "#/entities/TestAttempt" },
+      "description": "Immutable evaluated test attempts keyed by testId_userId."
+    },
+    "/groups/{groupId}/solutionReattempts/{reattemptId}": {
+      "schema": { "$ref": "#/entities/SolutionReattemptRecord" },
+      "description": "Isolated solution-mode practice reattempts keyed by testId_userId."
+    },
+    "/groups/{groupId}/bookmarks/{bookmarkId}": {
+      "schema": { "$ref": "#/entities/BookmarkedQuestion" },
+      "description": "User-bookmarked revision questions."
+    },
+    "/groups/{groupId}/currentAffairs/{itemId}": {
+      "schema": { "$ref": "#/entities/CurrentAffairItem" },
+      "description": "Daily Current Affairs image banners."
+    },
+    "/groups/{groupId}/polls/{pollId}": {
+      "schema": { "$ref": "#/entities/QuestionPoll" },
+      "description": "Interactive photo question polls and uploaded image solutions."
+    },
+    "/groups/{groupId}/polls/{pollId}/privateKey/{keyId}": {
+      "schema": { "$ref": "#/entities/PollPrivateKey" },
+      "description": "Creator-only hidden answer key before poll finalization."
+    },
+    "/groups/{groupId}/polls/{pollId}/votes/{voterId}": {
+      "schema": { "$ref": "#/entities/PollVote" },
+      "description": "One-vote-per-user records for interactive polls."
+    },
+    "/groups/{groupId}/discussions/{commentId}": {
+      "schema": { "$ref": "#/entities/DiscussionComment" },
+      "description": "Collaborative doubt comments, replies, helpful flags, reports, and correction audit trail."
+    },
+    "/groups/{groupId}/notifications/{notifId}": {
+      "schema": { "$ref": "#/entities/GroupNotification" },
+      "description": "Group announcements, exam alerts, and app update notifications."
+    },
+    "/groups/{groupId}/contentViews/{viewId}": {
+      "schema": { "$ref": "#/entities/ContentViewRecord" },
+      "description": "Deduplicated unique view logs for Banners and Polls (Admin-only list)."
+    },
+    "/groups/{groupId}/liveExams/{liveExamId}": {
+      "schema": { "$ref": "#/entities/LiveExam" },
+      "description": "Scheduled synchronized Live Exams linked to existing question sets."
+    },
+    "/groups/{groupId}/liveExamSessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/LiveExamSession" },
+      "description": "Live Exam participant registrations, active progress, security violation logs, and Admin moderation status."
+    },
+    "/groups/{groupId}/dailyTargets/{targetId}": {
+      "schema": { "$ref": "#/entities/DailyTargetTask" },
+      "description": "Admin-managed Daily Target Set (Aaj Ka Target) photo banners with IST rollover and next-day scheduling."
+    },
+    "/groups/{groupId}/categoryIcons/{categoryKey}": {
+      "schema": { "$ref": "#/entities/CategoryIconConfig" },
+      "description": "Admin-managed default set icons for the 7 official TRE 4.0 categories."
+    }
+  }
+}

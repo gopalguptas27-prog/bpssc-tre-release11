@@ -1,0 +1,396 @@
+MASTER IMPLEMENTATION PROMPT
+
+BPSC / BPSSC TRE 4.0 – COMPLETE TESTBOOK-STYLE ONLINE EXAM SYSTEM, 6-PART SET ARCHITECTURE, SOLUTION ANALYSIS, REATTEMPT & ADVANCED RANKING MANAGEMENT
+
+Implement a complete, professional, end-to-end Testbook-inspired Online Examination System inside the EXISTING TRE 4.0 Android application.
+
+This is an enhancement of the EXISTING application, NOT a new application.
+
+CRITICAL SAFETY & PRE-IMPLEMENTATION RULES:
+1. FIRST inspect the ENTIRE existing project architecture: package name, app branding (preserve existing package/identifiers; verify BPSC/BPSSC UI label as configured), current versionCode/versionName, authentication system, user roles, database/backend (if Firebase, preserve existing Firebase Auth, Firestore/RTDB, Storage, and security rules — do NOT migrate backends without explicit approval), imported JSON question bank structure, test sets, result system, and historical records.
+2. Create a safe backup / git checkpoint before modifying any code.
+3. Do NOT remove, reset, overwrite, replace, or damage any existing feature, test set, student account, admin account, or historical user data.
+4. Summarize your architecture audit findings first and flag any structural limitation before making changes to shared components.
+5. Implement everything cleanly in modular, fully functional end-to-end code (no UI-only mockups, no dummy data, no partial stubs).
+
+---
+
+1. 6-PART TEST SET ARCHITECTURE & SCORING BLUEPRINT (MANDATORY)
+
+Support and organize test sets into exactly 6 structured Set Types (while keeping 100% backward compatibility with any existing legacy sets, including 70-mark Language + Common Paper sets):
+
+1. **Part 1 – Common Paper (40 Questions | 40 Merit Marks)**
+   - Fixed subject breakdown (5 sub-sections of 8 questions each):
+     - Mathematics: 8 Questions
+     - Science: 8 Questions
+     - History: 8 Questions
+     - Geography: 8 Questions
+     - Current Affairs: 8 Questions
+   - Scoring: All 40 marks count toward Set Score, Cutoff, and Common Paper Ranking.
+
+2. **Part 2 – Language Paper (30 Questions | Qualifying Only)**
+   - Fixed sub-section breakdown:
+     - English: 8 Questions
+     - Hindi: 22 Questions
+   - Scoring & Qualifying Rule:
+     - Combined Language Marks >= 9 out of 30 --> PASS (Qualified)
+     - Combined Language Marks < 9 out of 30  --> FAIL (Not Qualified)
+     - Strictly Qualifying Only: Language marks are NEVER added to any Merit Score or Rank Card.
+
+3. **Part 3 – Maths (40 Questions | 40 Merit Marks)**
+   - Subject: 40 Questions from Mathematics.
+   - Scoring: All 40 marks count toward Maths Set Score and Maths Ranking.
+
+4. **Part 4 – Science (40 Questions | 40 Merit Marks)**
+   - Subject: 40 Questions from Science.
+   - Scoring: All 40 marks count toward Science Set Score and Science Ranking.
+
+5. **Part 5 – Full Length Set (Maths & Science) (150 Questions | 120 Merit Marks + 30 Qualifying)**
+   - Composition: Combines **Part 1 (Common Paper – 40 Q)** + **Part 2 (Language Paper – 30 Q)** + **Part 3 (Maths – 40 Q)** + **Part 4 (Science – 40 Q)**.
+   - Scoring & Rank Rule:
+     - Part 2 (Language – 30 Q) is evaluated separately as **Qualifying Only** (Combined >= 9/30 = PASS, < 9/30 = FAIL) and is **EXCLUDED** from Merit Score & Rank Card.
+     - Merit Score, Cutoff, Percentile, and Rank are calculated strictly out of **120 Marks** (40 Common Paper + 40 Maths + 40 Science).
+
+6. **Part 6 – Full Length Set (Mathematics) (150 Questions | 120 Merit Marks + 30 Qualifying)**
+   - Composition: Combines **Part 1 (Common Paper – 40 Q)** + **Part 2 (Language Paper – 30 Q)** + **Part 3 (Maths – 40 Q)** + **Additional Mathematics Section (40 Q)** (total 80 Mathematics questions).
+   - Scoring & Rank Rule:
+     - Part 2 (Language – 30 Q) is evaluated separately as **Qualifying Only** (Combined >= 9/30 = PASS, < 9/30 = FAIL) and is **EXCLUDED** from Merit Score & Rank Card.
+     - Merit Score, Cutoff, Percentile, and Rank are calculated strictly out of **120 Marks** (40 Common Paper + 80 Mathematics).
+
+Legacy Compatibility Note:
+- If any existing 70-mark **"Language + Common Paper"** set (30 Language + 40 Common Paper) exists in the database, enforce the same rule: Language (30) is Qualifying Only (9/30 to pass) and is NEVER added to the 40-mark Common Paper score — Merit & Rank are strictly out of **40 Marks** (NOT 70).
+
+---
+
+2. PRE-TEST INSTRUCTIONS & CONFIGURATION SCREEN
+
+Whenever a student selects any Set (Parts 1 to 6 or legacy sets), open a clean Testbook-style Pre-Test Instruction screen before starting the timer:
+- Test Name, Set Type (Part 1–6), Set Number/Name, Subject/Category, and Class Level.
+- Summary badges: Total Questions, Duration, and Marking Scheme (Positive marks & Negative marking rule for that set).
+- Clear Section & Scoring Breakdown table matching the selected Part:
+  - Part 1: 5 sub-sections (8Q each = 40 Merit Marks).
+  - Part 2: English (8Q) + Hindi (22Q) = 30 Marks (Qualifying Only – 9/30 to Pass).
+  - Part 3 / Part 4: 40Q Subject Merit Marks.
+  - Part 5: Language (30Q Qualifying – 9/30 Pass, Not in Merit) + Common Paper (40Q) + Maths (40Q) + Science (40Q) = **120 Merit Marks**.
+  - Part 6: Language (30Q Qualifying – 9/30 Pass, Not in Merit) + Common Paper (40Q) + Mathematics (80Q: 40 Part 3 + 40 Additional Maths) = **120 Merit Marks**.
+- Default Language selector (Hindi / English / Bilingual where bilingual data exists).
+- Question Palette status color legend.
+- Declaration / "I am ready to begin" confirmation + "START TEST" button.
+
+---
+
+3. TESTBOOK-STYLE ONLINE EXAM INTERFACE
+
+Upon clicking START TEST, open a distraction-free, modern, mobile-responsive examination interface with a premium blue-and-white theme (original UI inspired by Testbook's exam workflow — do NOT copy Testbook's proprietary logos, branding, or copyrighted assets) and crisp Devanagari (Hindi) and English typography.
+
+Top Bar:
+- Pause button (enabled for Practice Sets; disabled for strict Live Tests) + Android hardware Back-press guard (intercepts back press with Pause/Exit confirmation so the student never accidentally exits).
+- Test/Set Name & Live Countdown Timer (changes to warning orange/red in the final 5 minutes).
+- Live Language Switcher (HI / EN) per question without losing selected answers.
+- Font Size Toggle (A- / A+) for comfortable reading.
+- Collapsible Question Palette button (Grid/Drawer icon).
+
+Section Switcher Bar (for multi-section sets):
+- Horizontal scrollable section tabs showing live attempted counts per section:
+  - Part 1: `Maths (8)` | `Science (8)` | `History (8)` | `Geography (8)` | `Current Affairs (8)`
+  - Part 2: `English (8)` | `Hindi (22)`
+  - Part 5: `Language (30)` | `Common Paper (40)` | `Maths (40)` | `Science (40)`
+  - Part 6: `Language (30)` | `Common Paper (40)` | `Mathematics (80)` (or `Maths Part A (40)` | `Maths Part B (40)` as configured)
+
+Question Display Area:
+- Current Question Number / Total Questions, Section & Sub-subject tag, Marks badge (e.g., +1 | -0.33 or +1 | 0), and live Per-Question Timer showing elapsed seconds on the current question.
+- Bookmark Question icon & Report Issue icon.
+- Scrollable question view supporting Hindi/English text, mathematical formulas, tables, and diagrams/images.
+- Clean selectable option cards with clear active selection highlight.
+
+Fixed Bottom Control Bar:
+- Mark for Review & Next button.
+- Clear Response button.
+- Previous Question button.
+- Save & Next button (primary blue CTA).
+- Submit Test button (accessible from both the Palette drawer and the final question).
+
+---
+
+4. QUESTION NAVIGATION PALETTE (COLLAPSIBLE DRAWER)
+
+Provide a collapsible mobile-friendly drawer / bottom sheet displaying all question numbers (filtered by active section in multi-section sets):
+- Live count summary badges at the top for all 5 status categories with distinct colors:
+  1. Not Visited (Grey)
+  2. Not Answered (Red)
+  3. Answered (Green)
+  4. Marked for Review (Purple)
+  5. Answered & Marked for Review (Purple with Green indicator dot)
+- Toggle between Grid View (numbered buttons) and List View (question number + short question preview).
+- Direct tap-to-jump navigation to any question.
+- Automatic real-time status updates whenever a student answers, clears, or marks a question.
+- Prominent "Submit Test" button pinned at the bottom of the palette.
+
+---
+
+5. ANSWER SELECTION, OPTION E & CONFIGURABLE MARKING
+
+Preserve 100% backward compatibility with all existing imported JSON question sets, numbering, bilingual text, answer keys, and explanations.
+
+Configurable Option E Behavior (per test/set):
+- Mode A (Not Attempted): Preserve five-response format (A, B, C, D, and E – प्रयास नहीं किया गया / Not Attempted). If E is configured as Not Attempted, NEVER treat it as an ordinary wrong option or apply negative marking to it.
+- Mode B (Standard 5-Option MCQ): Support standard 5-option format where D/E are valid answer choices.
+- Automatically detect and preserve legacy set behavior without breaking existing sets.
+
+Configurable Marking Scheme (per test/set):
+- Support configurable positive marks and negative marking (0 / No Negative, 1/3, or 1/4) per set.
+- Do NOT calculate marks from unverified or missing answer keys.
+
+Response Reliability:
+- Students can freely change or clear selected answers before final submission.
+- Auto-save every response and per-question elapsed time locally immediately and sync reliably.
+
+---
+
+6. TEST TIMER, PAUSE/RESUME, CRASH RECOVERY & SUBMISSION ENGINE
+
+Implement:
+- Continuously running countdown timer (sync with server time offset where available instead of relying exclusively on device clock).
+- Accurate per-question elapsed time tracking (accumulates correctly when a student revisits a question).
+- Pause & Resume for Practice Sets (persists remaining time, active question, responses, palette states, and per-question times).
+- Crash / interruption / app backgrounding / network-drop recovery: automatically restore active exam session on reopening according to test rules.
+- Manual submission with Testbook-style Submit Confirmation Summary Popup showing section-wise & total counts (Answered, Not Answered, Marked for Review, Not Visited) and highlighting unanswered questions to prevent accidental submission.
+- Automatic submission immediately when time expires.
+- Strict duplicate submission prevention (idempotent write keyed by unique Attempt ID).
+- Record exact start time, submission time, total time taken, per-question time map, and immutable Original Attempt record.
+
+---
+
+7. COMPLETE TEST RESULT & PERFORMANCE ANALYSIS DASHBOARD
+
+After successful test submission (calculated strictly from the immutable Original Test Attempt), display a multi-card Testbook-style Result & Analysis Dashboard:
+
+A. Language Qualifying Paper Card (STRICT RULE — FOR PART 2, PART 5, PART 6 & LEGACY 70-MARK SETS):
+- Total Language Marks: 30 — display **English (out of 8)**, **Hindi (out of 22)**, and **Combined Language Marks (out of 30)** clearly.
+- Strict Passing / Qualifying Rule (default, configurable by Admin):
+  - Combined Language Marks >= 9 out of 30  --> Status: **PASS (Qualified)**
+  - Combined Language Marks < 9 out of 30   --> Status: **FAIL (Not Qualified)**
+  - No individual sectional cutoff for Hindi or English by default — only combined 9/30 is required.
+- STRICT RANK CARD & MERIT EXCLUSION:
+  - Language marks MUST NEVER be added to Common Paper (40), Part 5 Full Length (120), Part 6 Full Length (120), or legacy 70-mark sets (40).
+  - Always display Language in its own separate **"Qualifying Paper (Not Added to Merit/Rank)"** card.
+
+B. Merit Score & Performance Card (For Part 1, Part 3, Part 4, Part 5, Part 6 & Legacy Merit Sets):
+- Merit Marks Obtained / Total Merit Marks:
+  - Part 1 (Common Paper): `X / 40`
+  - Part 3 (Maths): `X / 40`
+  - Part 4 (Science): `X / 40`
+  - Part 5 (Full Length – Maths & Science): `X / 120` (40 Common + 40 Maths + 40 Science; Language excluded)
+  - Part 6 (Full Length – Mathematics): `X / 120` (40 Common + 80 Maths; Language excluded)
+  - Legacy 70-mark Language + Common Paper: `X / 40` (Language excluded)
+- Positive Marks vs Negative Marks breakdown.
+- Attempted, Correct, Incorrect, and Not Attempted counts (clearly separating Qualifying vs Merit sections where both exist).
+- Accuracy Percentage & Total Time Taken.
+- Test Completion Status.
+- Cutoff Status (Passed / Missed by X marks — evaluated strictly against Merit Marks, Admin-configurable per set).
+- Set-wise Rank & Percentile (e.g., Rank 12 / 250 | 95.2%ile) — omitted for standalone Part 2 (Qualifying Only) or shown strictly as Qualifying Status.
+
+C. Compare with Topper & Average Card:
+- Side-by-side comparison of Your Merit Score, Accuracy %, Attempted, and Time Taken against the Set Topper and Set Average (when sufficient attempts exist).
+
+D. Section-wise & Sub-Subject Performance Table:
+- Granular breakdown showing Attempted, Correct, Wrong, Score, Accuracy %, Time Spent, and Weak/Strong badges:
+  - For Part 1, Part 5, and Part 6: break down Common Paper into its 5 sub-subjects (Maths 8, Science 8, History 8, Geography 8, Current Affairs 8) as well as major sections (Language tagged as "Qualifying", Common Paper, Maths, Science).
+
+E. Action Buttons:
+- Prominent "View Solutions & Reattempt" button.
+- "View Full Set Leaderboard" button (for merit-bearing sets).
+
+---
+
+8. POST-TEST SOLUTION ANALYSIS PANEL (WITH FILTERS & GRID)
+
+Clicking "View Solutions & Reattempt" opens a dedicated Solution Analysis Panel:
+- Live summary counters: Total Correct, Total Incorrect, Total Not Attempted.
+- Quick Filter Chips with live counts:
+  All | Correct | Incorrect | Unattempted | Overtime | Bookmarked (plus optional Section filter for multi-section sets).
+- Navigable numbered question grid maintaining exact original test numbering with distinct status colors:
+  - Correct (Green)
+  - Incorrect (Red)
+  - Not Attempted (Grey)
+- Tapping any question number opens its detailed solution directly.
+- Smooth Previous and Next navigation inside the solution screen.
+
+---
+
+9. DETAILED QUESTION SOLUTION INTERFACE
+
+When a student opens any question in the Solution Panel, display:
+1. Original question (with live HI/EN language toggle & A-/A+ font size toggle).
+2. All original answer options.
+3. Student's Original First-Attempt Answer (permanently visible and locked).
+4. Actual Correct Answer.
+5. Original Status badge: Correct / Incorrect / Not Attempted.
+6. Time Analytics badge: "Your Time: Xs | Avg Time: Ys" (highlight with "Overtime" badge where applicable).
+7. Detailed explanation + step-by-step mathematical solution wherever applicable.
+8. Relevant diagrams, tables, or illustrations wherever available.
+9. Bookmark Question toggle (saves to student's Saved/Bookmarked Questions list) & Report Question / Answer Key button (sends Question ID, Set ID, Student ID, and issue reason to Admin).
+10. Previous and Next Question navigation.
+
+Visual Highlighting (in Review Mode):
+- Green highlight for Correct Answer.
+- Red highlight for Incorrect First-Attempt Answer (if selected).
+- Clear notice for Not Attempted questions stating the student did not select an answer during the original test.
+- Never modify the original question, answer key, or original attempt record.
+
+---
+
+10. SOLUTION MODE – INTERACTIVE REATTEMPT TOGGLE (NO SPOILERS)
+
+Implement a prominent Testbook-style "Re-attempt Mode" toggle switch (ON / OFF) at the top of the Solution interface:
+
+When Re-attempt Mode is OFF (Standard Review Mode):
+- Immediately show original attempt, correct answer highlight, and full explanation.
+
+When Re-attempt Mode is ON:
+- HIDE the correct answer highlight and detailed explanation for the current question until the student submits a reattempt selection (preventing spoilers).
+- Allow selecting A, B, C, D, or E (according to the set's configured response format).
+- Immediately upon selecting an answer:
+  - Show instant feedback: RIGHT ANSWER or WRONG ANSWER.
+  - Highlight the Correct Answer and reveal the full Detailed Explanation.
+  - Clearly display Original First Attempt and Solution Reattempt separately side-by-side:
+    - FIRST ATTEMPT: Student selected B | Original Result: INCORRECT
+    - SOLUTION REATTEMPT: Student selected C | Instant Feedback: RIGHT ANSWER
+    - ACTUAL CORRECT ANSWER: C
+- Allow changing the reattempt selection for practice while keeping the Original First Attempt permanently visible and unchanged.
+
+---
+
+11. STRICT ORIGINAL RESULT & RANK PROTECTION
+
+The Reattempt feature is strictly for learning and self-assessment. It must NEVER modify:
+- Original test result, merit marks, or negative marking.
+- Original correct / incorrect / not attempted counts.
+- Original accuracy, time taken, or completion status.
+- Original Language PASS/FAIL status.
+- Original rank, percentile, or leaderboard position.
+
+Maintain two strictly separated data records:
+- A. Original Test Attempt (IMMUTABLE after submission; sole source of truth for scoring, percentiles, and all rankings).
+- B. Solution Review / Reattempt Record (stored separately solely for learning progress and revision analytics).
+
+---
+
+12. ADVANCED INDEPENDENT RANKING SYSTEM
+
+Calculate ALL rankings exclusively from immutable Original Test Attempts (NEVER use Solution Reattempt records).
+
+A. Independent Set-Wise & Part-Wise Ranking:
+- Maintain completely isolated leaderboards for every Set Type and Set Number:
+  - **Part 1 (Common Paper – Set 1, Set 2, ...):** Ranked out of 40 Marks.
+  - **Part 2 (Language Paper – Set 1, Set 2, ...):** Qualifying Status ONLY (PASS >= 9/30, FAIL < 9/30) — NO Merit Rank.
+  - **Part 3 (Maths – Set 1, Set 2, ...):** Ranked out of 40 Marks.
+  - **Part 4 (Science – Set 1, Set 2, ...):** Ranked out of 40 Marks.
+  - **Part 5 (Full Length – Maths & Science – Set 1, Set 2, ...):** Ranked strictly out of **120 Merit Marks** (Language excluded).
+  - **Part 6 (Full Length – Mathematics – Set 1, Set 2, ...):** Ranked strictly out of **120 Merit Marks** (Language excluded).
+- Students attempting Set 1 of any Part are ranked ONLY against students who attempted that exact same Set 1. NEVER mix different sets or mix Part 5 (Maths & Science) with Part 6 (Mathematics).
+
+B. Class-Wise, Category-Wise & Subject-Wise Ranking:
+- Maintain separate rankings strictly by configured exam category, class level (e.g., Class 6–8, Class 9–10, Class 11–12 where supported), and subject/stream.
+- Provide independent section-wise performance & ranking within Full Length sets (Part 5 & Part 6). Never combine unrelated subject ranks.
+
+C. Language Paper – Strict Qualifying Rule in Rankings:
+- Language (30 marks total: 8 English + 22 Hindi; Combined >= 9 = PASS, < 9 = FAIL) is strictly QUALIFYING ONLY.
+- Language marks must NEVER increase or decrease Merit Score or Rank in Part 5, Part 6, or legacy 70-mark Language + Common Paper sets.
+- Provide an Admin-configurable leaderboard policy for Language-failed (< 9/30) attempts in Part 5, Part 6, and legacy 70-mark sets:
+  - Option 1: Display on leaderboard with a clear "Not Qualified (Language Failed)" badge without adding Language marks.
+  - Option 2: Exclude Language-failed attempts from official Merit Rank while still displaying their Merit Score (e.g., X / 120 or X / 40) & "Language: FAIL (< 9/30)" on their personal Result Card.
+
+D. Overall Merit Ranking, Percentile & Tie-Breaking:
+- Calculate Overall Merit strictly from configured merit-bearing components only (excluding Language marks and excluding Reattempts).
+- Support Admin-configurable tie-breaking rules (e.g., higher merit score -> higher accuracy / fewer negative marks -> less time taken, OR shared equal ranks when scores tie). Do NOT invent or hardcode unverified official tie-breaking rules.
+- Calculate accurate Percentile alongside Rank (`((Total Participants - Rank) / Total Participants) * 100`, handling single-participant edge cases cleanly).
+
+---
+
+13. STUDENT RANKING & SAVED REVISION DASHBOARD
+
+Provide a dedicated "Rank & Leaderboard" hub in the student app:
+- Always display exact Rank Scope and Merit Base clearly (e.g., `"Full Length Set (Maths & Science) – Set 1 (Merit out of 120) | Your Rank: 12 / 250 | Percentile: 95.2%"`).
+- Display Student's Rank, Total Participants, Merit Marks Obtained (excluding Language), Highest Merit Marks, Average Merit Marks (when sufficient data exists), Percentile, Performance Percentage, and separate Language Qualifying Status (PASS/FAIL) where applicable.
+- Provide clean category tabs matching the 6-Part structure:
+  - Full Length (Maths & Science) – Part 5
+  - Full Length (Mathematics) – Part 6
+  - Common Paper – Part 1
+  - Maths – Part 3
+  - Science – Part 4
+  - Overall Merit Rankings
+  - *(Plus a separate "Language Qualifying History" view for Part 2 showing PASS/FAIL & English/Hindi breakdown)*
+- Provide a dedicated "Bookmarked Questions" revision section so students can filter and revise saved questions.
+
+---
+
+14. COMPREHENSIVE ADMIN MANAGEMENT & SET ASSEMBLER DASHBOARD
+
+Extend the existing Admin panel (preserving all current Admin capabilities) with:
+- **6-Part Set Builder & Auto-Assembler:**
+  - Create or import sets directly under Part 1 (Common Paper: 8+8+8+8+8), Part 2 (Language: 8 Eng + 22 Hindi), Part 3 (Maths: 40), Part 4 (Science: 40), Part 5 (Full Length – Maths & Science: 150), and Part 6 (Full Length – Mathematics: 150).
+  - **One-Click Set Assembler for Part 5 & Part 6:** Allow Admin to compose a **Part 5** set by selecting an existing Part 1 + Part 2 + Part 3 + Part 4 set (or importing directly), and compose a **Part 6** set by selecting an existing Part 1 + Part 2 + Part 3 set + uploading/selecting an additional 40-question Maths bank — validating exact question counts per section before publishing.
+- **Per-Set Examination Rules Configuration:**
+  - Positive marks & Negative marking (0 / 1/3 / 1/4).
+  - Option E Mode (Not Attempted vs Standard 5th Option).
+  - Automatic `isQualifyingOnly = true` tagging on Part 2 / Language sections so they are strictly excluded from Merit & Rank totals.
+  - Cutoff marks (based on Merit Marks only) & Pause allowed toggle.
+  - Language Qualifying Criteria (default: 9 out of 30 combined; optional separate Hindi/English minimums if Admin enables them) + Language-failed leaderboard handling toggle.
+  - Tie-breaking rule selector.
+- **Student & Ranking Analytics Viewer:**
+  - View all registered students and individual test attempts.
+  - View and filter rankings by Part Type (Parts 1–6), class, subject, set, and date.
+  - Inspect Original Attempt responses separately from Solution Reattempt learning analytics (Reattempt must never overwrite Original Attempt).
+  - View Language Qualifying results (English/Hindi/Total/PASS-FAIL) separately.
+- **Reported Question / Answer Key Queue:**
+  - Review student-submitted issue tickets (Question ID, Set ID, Student ID, reason) and mark them Resolved after verification.
+- **Export:**
+  - Export filtered rankings and student results (CSV/Excel where supported), keeping Language Qualifying Score/Status in separate columns from Merit Score & Rank.
+
+---
+
+15. DATABASE ARCHITECTURE, SECURITY, PERFORMANCE & VERSIONING
+
+- Extend the existing database schema non-destructively while maintaining clean referential links across User ID, Test ID, Set ID, Set Type (`PART_1_COMMON`, `PART_2_LANGUAGE`, `PART_3_MATHS`, `PART_4_SCIENCE`, `PART_5_FULL_MATH_SCI`, `PART_6_FULL_MATH`), Section ID, Sub-Subject ID, Question ID, and unique Attempt ID.
+- Maintain strictly separated collections/tables for:
+  - Test & Set metadata/configs (including `setType`, section composition references, and `isQualifyingOnly` flags)
+  - In-progress / paused exam sessions (crash recovery & resume)
+  - Immutable Original Test Attempts, Original Answers (with per-question time), and Original Results (storing `languageEnglishMarks`, `languageHindiMarks`, `languageTotalMarks`, `languageStatus`, `meritMarks`, `totalMeritMarks`, and sub-subject breakdowns separately)
+  - Solution Review / Reattempt records
+  - Student Bookmarks & Reported Question tickets
+  - Independent Set-wise, Part-wise, Subject-wise, Common Paper, Class-wise, Overall Merit, and Language Qualifying ranking records
+- Enforce security rules so students cannot tamper with submitted Original Attempts, answer keys, or leaderboard ranks.
+- Optimize loading and navigation using efficient caching/batching (avoid redundant per-question network calls during active exams) and resilient offline local autosave.
+- Increment Android `versionCode` and `versionName` cleanly upon completion.
+- Maintain 100% backward compatibility with all existing JSON question sets, bilingual data, student accounts, admin accounts, and historical results. Never force users to re-register or reset production data.
+
+---
+
+16. COMPLETE END-TO-END VERIFICATION CHECKLIST (MUST PASS BEFORE DECLARING COMPLETION)
+
+A. 6-Part Set Architecture & Admin Assembler:
+- Part 1 (8+8+8+8+8 = 40), Part 2 (8 Eng + 22 Hindi = 30), Part 3 (40 Maths), Part 4 (40 Science), Part 5 (150 Q = Part 1+2+3+4), and Part 6 (150 Q = Part 1+2+3 + 40 Extra Maths) all create, load, display section tabs, and validate question counts properly.
+
+B. Exam Interface, Controls & Recovery:
+- Pre-test instruction screen, HI/EN live toggle, A-/A+ font toggle, section tabs, per-question timer, 5-status Grid/List palette, Option E modes, configurable negative marking, Pause/Resume, Back-press guard, manual confirmation popup, auto-submit on timeout, crash/app-kill recovery, duplicate submission prevention.
+
+C. Result Dashboard & Strict Language Exclusion Rules:
+- Part 2 / Language 9/30 rule verified: >= 9/30 = PASS, < 9/30 = FAIL, showing English (8), Hindi (22), and Total (30) separately.
+- Part 5 (Full Length – Maths & Science) verified: Language (30) is NOT added to Merit; Rank & Score are strictly out of **120** (40+40+40).
+- Part 6 (Full Length – Mathematics) verified: Language (30) is NOT added to Merit; Rank & Score are strictly out of **120** (40 Common + 80 Maths).
+- Legacy 70-mark Language + Common Paper sets verified: Language (30) is NOT added; Rank & Score are strictly out of **40**.
+- Sub-subject breakdown (8/8/8/8/8 for Common Paper), positive/negative marks, accuracy, time taken, cutoff status, and Topper vs Average comparison all accurate.
+
+D. Solution Analysis & Reattempt:
+- All question numbers in exact original order, working filter chips (All/Correct/Incorrect/Unattempted/Overtime/Bookmarked), detailed explanations, Bookmarks, Report Issue.
+- Re-attempt Mode ON hides spoilers until selection, displays instant RIGHT/WRONG feedback, shows First Attempt vs Reattempt separately, and NEVER mutates Original Attempt score or rank.
+
+E. Rankings & Admin Panel:
+- Strict Set-wise & Part-wise isolation (Part 5 and Part 6 leaderboards never mixed; different sets never mixed); accurate Percentile & Tie handling; Language excluded from all merit scores and ranks; Reattempts excluded from rankings.
+- Admin per-set config, Set Assembler, filtered rankings, Original vs Reattempt separation, Reported Issues queue, and Export.
+
+F. Existing Application Regression:
+- Existing login, registration, Admin panel, JSON question import, legacy test sets, historical results, notifications, and existing database records remain 100% intact.
+
+First complete the architecture inspection, then implement every module thoroughly end-to-end, and finally verify every single checklist item above before declaring completion.

@@ -1,0 +1,1189 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: default deny everything not explicitly matched
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ==================== PRIMITIVE HELPERS ====================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isOptionalString(data, key, maxLen) {
+      return !(key in data) || data[key] == null || (data[key] is string && data[key].size() <= maxLen);
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        ('email' in request.auth.token &&
+          'email_verified' in request.auth.token &&
+          request.auth.token.email == 'gopal.guptas27@gmail.com' &&
+          request.auth.token.email_verified == true)
+      );
+    }
+
+    function isGroupMember(groupId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+    }
+
+    function isGroupAdmin(groupId) {
+      return isSuperAdmin() || (
+        isGroupMember(groupId) &&
+        get(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.role in ['GROUP_ADMIN', 'SUPER_ADMIN']
+      ) || (
+        isSignedIn() &&
+        exists(/databases/$(database)/documents/groups/$(groupId)) &&
+        get(/databases/$(database)/documents/groups/$(groupId)).data.createdByUid == request.auth.uid
+      ) || (
+        isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['GROUP_ADMIN', 'SUPER_ADMIN']
+      );
+    }
+
+    function isAnyAppUpdateAdmin(data) {
+      return isSuperAdmin() || (
+        'groupId' in data &&
+        data.groupId is string &&
+        data.groupId.size() > 0 &&
+        isGroupAdmin(data.groupId)
+      );
+    }
+
+    // ==================== VALIDATION BLUEPRINTS ====================
+    function isValidAdminRecord(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'displayName', 'createdAt']) &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+        data.displayName is string && data.displayName.size() >= 2 && data.displayName.size() <= 60 &&
+        isValidTimestamp(data.createdAt);
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['userId', 'displayName', 'role', 'languagePref', 'publicSharing', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'userId', 'displayName', 'email', 'whatsappNumber', 'photoBase64',
+          'activeGroupId', 'role', 'languagePref', 'publicSharing', 'createdAt', 'updatedAt'
+        ]) &&
+        data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+        data.displayName is string && data.displayName.size() >= 2 && data.displayName.size() <= 60 &&
+        isOptionalString(data, 'email', 120) &&
+        isOptionalString(data, 'whatsappNumber', 20) &&
+        isOptionalString(data, 'photoBase64', 220000) &&
+        isOptionalString(data, 'activeGroupId', 128) &&
+        data.role in ['ASPIRANT', 'QUESTION_CREATOR', 'GROUP_ADMIN', 'SUPER_ADMIN'] &&
+        data.languagePref in ['BILINGUAL', 'HINDI', 'ENGLISH'] &&
+        data.publicSharing is bool &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidAdminContact(data, groupId) {
+      return data.keys().hasAll(['groupId', 'adminUid', 'adminName', 'updatedAt']) &&
+        data.keys().hasOnly(['groupId', 'adminUid', 'adminName', 'adminPhotoBase64', 'adminWhatsAppNumber', 'updatedAt']) &&
+        data.groupId == groupId &&
+        data.adminUid is string && data.adminUid.size() >= 1 && data.adminUid.size() <= 128 &&
+        data.adminName is string && data.adminName.size() >= 2 && data.adminName.size() <= 60 &&
+        isOptionalString(data, 'adminPhotoBase64', 220000) &&
+        isOptionalString(data, 'adminWhatsAppNumber', 20) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidInviteCode(data) {
+      return data.keys().hasAll(['groupId', 'groupName', 'createdByUid', 'createdAt']) &&
+        data.keys().hasOnly(['groupId', 'groupName', 'createdByUid', 'createdAt']) &&
+        isValidId(data.groupId) &&
+        data.groupName is string && data.groupName.size() >= 2 && data.groupName.size() <= 80 &&
+        data.createdByUid is string && data.createdByUid.size() >= 1 && data.createdByUid.size() <= 128 &&
+        isValidTimestamp(data.createdAt);
+    }
+
+    function isValidExamGroup(data) {
+      return data.keys().hasAll(['name', 'description', 'inviteCode', 'createdByUid', 'createdByName', 'memberCount', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['name', 'description', 'inviteCode', 'createdByUid', 'createdByName', 'memberCount', 'createdAt', 'updatedAt']) &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 80 &&
+        data.description is string && data.description.size() <= 400 &&
+        data.inviteCode is string && data.inviteCode.size() >= 4 && data.inviteCode.size() <= 20 &&
+        data.createdByUid is string && data.createdByUid.size() >= 1 && data.createdByUid.size() <= 128 &&
+        data.createdByName is string && data.createdByName.size() >= 2 && data.createdByName.size() <= 60 &&
+        data.memberCount is int && data.memberCount >= 0 && data.memberCount <= 100000 &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidGroupMember(data, groupId) {
+      return data.keys().hasAll(['groupId', 'userId', 'displayName', 'role', 'gsTestsAttempted', 'gsTotalScore', 'gsAverageScore', 'langStatus', 'publicSharing', 'joinedAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'groupId', 'userId', 'displayName', 'photoBase64', 'role',
+          'gsTestsAttempted', 'gsTotalScore', 'gsAverageScore', 'gsHighestScore', 'gsLowestScore',
+          'latestGsScore', 'latestGsTestTitle', 'weeklyGsTotal', 'weeklyGsCount',
+          'monthlyGsTotal', 'monthlyGsCount', 'langScore', 'langHindiScore',
+          'langEnglishScore', 'langStatus', 'previousRank', 'publicSharing', 'joinedAt', 'updatedAt'
+        ]) &&
+        data.groupId == groupId &&
+        data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+        data.displayName is string && data.displayName.size() >= 2 && data.displayName.size() <= 60 &&
+        isOptionalString(data, 'photoBase64', 220000) &&
+        data.role in ['ASPIRANT', 'QUESTION_CREATOR', 'GROUP_ADMIN', 'SUPER_ADMIN'] &&
+        data.gsTestsAttempted is int && data.gsTestsAttempted >= 0 && data.gsTestsAttempted <= 10000 &&
+        data.gsTotalScore is number &&
+        data.gsAverageScore is number &&
+        (!('gsHighestScore' in data) || data.gsHighestScore is number) &&
+        (!('gsLowestScore' in data) || data.gsLowestScore is number) &&
+        (!('latestGsScore' in data) || data.latestGsScore is number) &&
+        isOptionalString(data, 'latestGsTestTitle', 140) &&
+        (!('weeklyGsTotal' in data) || data.weeklyGsTotal is number) &&
+        (!('weeklyGsCount' in data) || (data.weeklyGsCount is int && data.weeklyGsCount >= 0)) &&
+        (!('monthlyGsTotal' in data) || data.monthlyGsTotal is number) &&
+        (!('monthlyGsCount' in data) || (data.monthlyGsCount is int && data.monthlyGsCount >= 0)) &&
+        (!('langScore' in data) || data.langScore is number) &&
+        (!('langHindiScore' in data) || data.langHindiScore is number) &&
+        (!('langEnglishScore' in data) || data.langEnglishScore is number) &&
+        data.langStatus in ['NOT_ATTEMPTED', 'PASS', 'FAIL'] &&
+        (!('previousRank' in data) || (data.previousRank is int && data.previousRank >= 0)) &&
+        data.publicSharing is bool &&
+        isValidTimestamp(data.joinedAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPaperType(pt) {
+      return pt in [
+        'COMMON_GS', 'LANGUAGE', 'COMBINED',
+        'CLASS_6_8_MATH', 'CLASS_6_8_SCIENCE', 'CLASS_9_10_MATH_80',
+        'CLASS_6_8_MATH_SCIENCE', 'CLASS_9_10_MATH', 'PRACTICE'
+      ];
+    }
+
+    function isValidExamTest(data, groupId) {
+      return data.keys().hasAll([
+          'groupId', 'title', 'paperType', 'difficulty', 'status',
+          'creatorUid', 'creatorName', 'durationMinutes', 'questionCount',
+          'negativeMarkNumerator', 'negativeMarkDenominator', 'unattemptedPenalty',
+          'questions', 'attemptCount', 'answerReleaseMode', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'groupId', 'title', 'paperType', 'difficulty', 'status',
+          'creatorUid', 'creatorName', 'creatorPhotoBase64', 'durationMinutes', 'questionCount',
+          'negativeMarkNumerator', 'negativeMarkDenominator', 'unattemptedPenalty',
+          'questions', 'attemptCount', 'answerReleaseMode', 'scheduledAt',
+          'approvedForAll', 'approvedMemberIds', 'visibleToUids',
+          'iconKey', 'customIconBase64', 'customIconUrl', 'bannerImageBase64',
+          'setType', 'classLevel', 'positiveMarks', 'optionEMode', 'cutoffMarks',
+          'pauseAllowed', 'langPassMarks', 'langMinHindi', 'langMinEnglish',
+          'langFailRankPolicy', 'tieBreakPolicy', 'assembledFromTestIds', 'setNumber',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.groupId == groupId &&
+        data.title is string && data.title.size() >= 3 && data.title.size() <= 140 &&
+        isValidPaperType(data.paperType) &&
+        data.difficulty in ['EASY', 'MODERATE', 'HARD'] &&
+        data.status in ['PENDING', 'PUBLISHED', 'REJECTED'] &&
+        data.creatorUid is string && data.creatorUid.size() >= 1 && data.creatorUid.size() <= 128 &&
+        data.creatorName is string && data.creatorName.size() >= 2 && data.creatorName.size() <= 60 &&
+        isOptionalString(data, 'creatorPhotoBase64', 220000) &&
+        data.durationMinutes is number && data.durationMinutes >= 1 && data.durationMinutes <= 300 &&
+        data.questionCount is number && data.questionCount >= 1 && data.questionCount <= 150 &&
+        data.negativeMarkNumerator is number && data.negativeMarkNumerator >= 0 && data.negativeMarkNumerator <= 10 &&
+        data.negativeMarkDenominator is number && data.negativeMarkDenominator >= 1 && data.negativeMarkDenominator <= 10 &&
+        data.unattemptedPenalty is bool &&
+        data.questions is list && data.questions.size() >= 1 && data.questions.size() <= 150 &&
+        data.attemptCount is number && data.attemptCount >= 0 &&
+        data.answerReleaseMode in ['IMMEDIATE', 'SCHEDULED'] &&
+        isOptionalString(data, 'scheduledAt', 60) &&
+        isOptionalString(data, 'iconKey', 60) &&
+        isOptionalString(data, 'customIconBase64', 260000) &&
+        isOptionalString(data, 'customIconUrl', 500) &&
+        isOptionalString(data, 'bannerImageBase64', 520000) &&
+        isOptionalString(data, 'setType', 60) &&
+        isOptionalString(data, 'classLevel', 60) &&
+        (!('positiveMarks' in data) || data.positiveMarks == null || (data.positiveMarks is number && data.positiveMarks > 0 && data.positiveMarks <= 10)) &&
+        isOptionalString(data, 'optionEMode', 60) &&
+        (!('cutoffMarks' in data) || data.cutoffMarks == null || (data.cutoffMarks is number && data.cutoffMarks >= -50 && data.cutoffMarks <= 300)) &&
+        (!('pauseAllowed' in data) || data.pauseAllowed == null || data.pauseAllowed is bool) &&
+        (!('langPassMarks' in data) || data.langPassMarks == null || (data.langPassMarks is number && data.langPassMarks >= 0 && data.langPassMarks <= 30)) &&
+        (!('langMinHindi' in data) || data.langMinHindi == null || (data.langMinHindi is number && data.langMinHindi >= 0 && data.langMinHindi <= 22)) &&
+        (!('langMinEnglish' in data) || data.langMinEnglish == null || (data.langMinEnglish is number && data.langMinEnglish >= 0 && data.langMinEnglish <= 8)) &&
+        isOptionalString(data, 'langFailRankPolicy', 60) &&
+        isOptionalString(data, 'tieBreakPolicy', 60) &&
+        (!('assembledFromTestIds' in data) || data.assembledFromTestIds == null || (data.assembledFromTestIds is list && data.assembledFromTestIds.size() <= 10)) &&
+        (!('setNumber' in data) || data.setNumber == null || (data.setNumber is number && data.setNumber >= 0 && data.setNumber <= 10000)) &&
+        (!('approvedForAll' in data) || data.approvedForAll == null || data.approvedForAll is bool) &&
+        (!('approvedMemberIds' in data) || data.approvedMemberIds == null || (data.approvedMemberIds is list && data.approvedMemberIds.size() <= 500)) &&
+        (!('visibleToUids' in data) || data.visibleToUids == null || (data.visibleToUids is list && data.visibleToUids.size() <= 501)) &&
+        (data.status == 'PUBLISHED' || !('visibleToUids' in data) || data.visibleToUids == null || data.visibleToUids.size() == 0) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidAdminTestVisibilityUpdate(data) {
+      return data.status in ['PENDING', 'PUBLISHED', 'REJECTED'] &&
+        (!('approvedForAll' in data) || data.approvedForAll == null || data.approvedForAll is bool) &&
+        (!('approvedMemberIds' in data) || data.approvedMemberIds == null || (data.approvedMemberIds is list && data.approvedMemberIds.size() <= 500)) &&
+        (!('visibleToUids' in data) || data.visibleToUids == null || (data.visibleToUids is list && data.visibleToUids.size() <= 501)) &&
+        (data.status == 'PUBLISHED' || !('visibleToUids' in data) || data.visibleToUids == null || data.visibleToUids.size() == 0) &&
+        isOptionalString(data, 'scheduledAt', 60) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidAdminTestContentUpdate(data) {
+      return (!('title' in data) || (data.title is string && data.title.size() >= 3 && data.title.size() <= 140)) &&
+        (!('difficulty' in data) || data.difficulty in ['EASY', 'MODERATE', 'HARD']) &&
+        (!('status' in data) || data.status in ['PENDING', 'PUBLISHED', 'REJECTED']) &&
+        (!('durationMinutes' in data) || (data.durationMinutes is number && data.durationMinutes >= 1 && data.durationMinutes <= 300)) &&
+        (!('questionCount' in data) || (data.questionCount is number && data.questionCount >= 1 && data.questionCount <= 150)) &&
+        (!('questions' in data) || (data.questions is list && data.questions.size() >= 1 && data.questions.size() <= 150)) &&
+        (!('unattemptedPenalty' in data) || data.unattemptedPenalty is bool) &&
+        (!('answerReleaseMode' in data) || data.answerReleaseMode in ['IMMEDIATE', 'SCHEDULED']) &&
+        isOptionalString(data, 'iconKey', 60) &&
+        isOptionalString(data, 'customIconBase64', 260000) &&
+        isOptionalString(data, 'bannerImageBase64', 520000) &&
+        isOptionalString(data, 'scheduledAt', 60) &&
+        (!('approvedForAll' in data) || data.approvedForAll == null || data.approvedForAll is bool) &&
+        (!('approvedMemberIds' in data) || data.approvedMemberIds == null || (data.approvedMemberIds is list && data.approvedMemberIds.size() <= 500)) &&
+        (!('visibleToUids' in data) || data.visibleToUids == null || (data.visibleToUids is list && data.visibleToUids.size() <= 501)) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidTestAttempt(data, groupId) {
+      return data.keys().hasAll([
+          'groupId', 'testId', 'testTitle', 'paperType', 'userId', 'aspirantName',
+          'answers', 'correctCount', 'incorrectCount', 'dontKnowCount', 'notAttemptedCount',
+          'totalScore', 'maxMarks', 'percentage', 'negativeDeducted', 'subjectScores',
+          'timeSpentSeconds', 'submittedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'groupId', 'testId', 'testTitle', 'paperType', 'userId', 'aspirantName', 'aspirantPhotoBase64',
+          'answers', 'correctCount', 'incorrectCount', 'dontKnowCount', 'notAttemptedCount',
+          'totalScore', 'maxMarks', 'percentage', 'negativeDeducted', 'subjectScores',
+          'hindiScore', 'englishScore', 'langPassed', 'timeSpentSeconds', 'questionTimesSec',
+          'setType', 'meritMarks', 'totalMeritMarks', 'positiveMarksEarned',
+          'languageTotalMarks', 'languageStatus', 'meritCorrectCount', 'meritIncorrectCount',
+          'meritUnattemptedCount', 'startedAtEpochMillis', 'completionStatus',
+          'submittedAt'
+        ]) &&
+        data.groupId == groupId &&
+        isValidId(data.testId) &&
+        data.testTitle is string && data.testTitle.size() >= 3 && data.testTitle.size() <= 140 &&
+        isValidPaperType(data.paperType) &&
+        data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+        data.aspirantName is string && data.aspirantName.size() >= 2 && data.aspirantName.size() <= 60 &&
+        isOptionalString(data, 'aspirantPhotoBase64', 220000) &&
+        data.answers is map &&
+        data.correctCount is int && data.correctCount >= 0 && data.correctCount <= 150 &&
+        data.incorrectCount is int && data.incorrectCount >= 0 && data.incorrectCount <= 150 &&
+        data.dontKnowCount is int && data.dontKnowCount >= 0 && data.dontKnowCount <= 150 &&
+        data.notAttemptedCount is int && data.notAttemptedCount >= 0 && data.notAttemptedCount <= 150 &&
+        data.totalScore is number &&
+        data.maxMarks is number && data.maxMarks > 0 &&
+        data.percentage is number &&
+        data.negativeDeducted is number && data.negativeDeducted >= 0 &&
+        data.subjectScores is map &&
+        (!('hindiScore' in data) || data.hindiScore is number) &&
+        (!('englishScore' in data) || data.englishScore is number) &&
+        (!('langPassed' in data) || data.langPassed is bool) &&
+        data.timeSpentSeconds is int && data.timeSpentSeconds >= 0 && data.timeSpentSeconds <= 86400 &&
+        (!('questionTimesSec' in data) || data.questionTimesSec is map) &&
+        isOptionalString(data, 'setType', 40) &&
+        (!('meritMarks' in data) || data.meritMarks is number) &&
+        (!('totalMeritMarks' in data) || (data.totalMeritMarks is number && data.totalMeritMarks >= 0)) &&
+        (!('positiveMarksEarned' in data) || data.positiveMarksEarned is number) &&
+        (!('languageTotalMarks' in data) || data.languageTotalMarks is number) &&
+        isOptionalString(data, 'languageStatus', 30) &&
+        (!('meritCorrectCount' in data) || (data.meritCorrectCount is int && data.meritCorrectCount >= 0 && data.meritCorrectCount <= 150)) &&
+        (!('meritIncorrectCount' in data) || (data.meritIncorrectCount is int && data.meritIncorrectCount >= 0 && data.meritIncorrectCount <= 150)) &&
+        (!('meritUnattemptedCount' in data) || (data.meritUnattemptedCount is int && data.meritUnattemptedCount >= 0 && data.meritUnattemptedCount <= 150)) &&
+        (!('startedAtEpochMillis' in data) || (data.startedAtEpochMillis is int && data.startedAtEpochMillis >= 0)) &&
+        isOptionalString(data, 'completionStatus', 30) &&
+        isValidTimestamp(data.submittedAt);
+    }
+
+    function isValidSolutionReattempt(data, groupId) {
+      return data.keys().hasAll([
+          'groupId', 'testId', 'testTitle', 'userId', 'aspirantName',
+          'reattemptAnswers', 'correctCount', 'wrongCount', 'totalReattempted', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'groupId', 'testId', 'testTitle', 'userId', 'aspirantName',
+          'reattemptAnswers', 'correctCount', 'wrongCount', 'totalReattempted', 'updatedAt'
+        ]) &&
+        data.groupId == groupId &&
+        isValidId(data.testId) &&
+        data.testTitle is string && data.testTitle.size() >= 1 && data.testTitle.size() <= 140 &&
+        data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+        data.aspirantName is string && data.aspirantName.size() >= 2 && data.aspirantName.size() <= 60 &&
+        data.reattemptAnswers is map &&
+        data.correctCount is int && data.correctCount >= 0 && data.correctCount <= 150 &&
+        data.wrongCount is int && data.wrongCount >= 0 && data.wrongCount <= 150 &&
+        data.totalReattempted is int && data.totalReattempted >= 0 && data.totalReattempted <= 150 &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidBookmark(data, groupId) {
+      return data.keys().hasAll([
+          'groupId', 'userId', 'testId', 'testTitle', 'questionIndex', 'questionNumber',
+          'subject', 'questionText', 'correctOption', 'explanation', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'groupId', 'userId', 'testId', 'testTitle', 'questionIndex', 'questionNumber',
+          'subject', 'questionText', 'correctOption', 'explanation', 'createdAt'
+        ]) &&
+        data.groupId == groupId &&
+        data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+        isValidId(data.testId) &&
+        data.testTitle is string && data.testTitle.size() >= 1 && data.testTitle.size() <= 140 &&
+        data.questionIndex is int && data.questionIndex >= 0 && data.questionIndex < 150 &&
+        data.questionNumber is int && data.questionNumber >= 1 && data.questionNumber <= 150 &&
+        data.subject is string && data.subject.size() <= 80 &&
+        data.questionText is string && data.questionText.size() >= 1 && data.questionText.size() <= 2000 &&
+        data.correctOption is string && data.correctOption.size() <= 4 &&
+        data.explanation is string && data.explanation.size() <= 3000 &&
+        isValidTimestamp(data.createdAt);
+    }
+
+    function isValidCurrentAffair(data, groupId) {
+      return data.keys().hasAll(['groupId', 'title', 'summary', 'dateLabel', 'source', 'category', 'publishedByUid', 'publishedByName', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['groupId', 'title', 'summary', 'dateLabel', 'source', 'imageBase64', 'category', 'publishedByUid', 'publishedByName', 'createdAt', 'updatedAt']) &&
+        data.groupId == groupId &&
+        data.title is string && data.title.size() >= 3 && data.title.size() <= 160 &&
+        data.summary is string && data.summary.size() <= 1500 &&
+        data.dateLabel is string && data.dateLabel.size() >= 3 && data.dateLabel.size() <= 40 &&
+        data.source is string && data.source.size() >= 2 && data.source.size() <= 120 &&
+        isOptionalString(data, 'imageBase64', 520000) &&
+        data.category is string && data.category.size() >= 2 && data.category.size() <= 50 &&
+        data.publishedByUid is string && data.publishedByUid.size() >= 1 && data.publishedByUid.size() <= 128 &&
+        data.publishedByName is string && data.publishedByName.size() >= 2 && data.publishedByName.size() <= 60 &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidQuestionPoll(data, groupId) {
+      return data.keys().hasAll(['groupId', 'creatorUid', 'creatorName', 'questionTitle', 'options', 'status', 'correctOptionIndex', 'voteCounts', 'totalVotes', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'groupId', 'creatorUid', 'creatorName', 'creatorPhotoBase64',
+          'questionTitle', 'description', 'imageBase64', 'options', 'status',
+          'correctOptionIndex', 'finalExplanation', 'solutionImages', 'solutionContributors',
+          'voteCounts', 'totalVotes', 'reportCount', 'reportedByUids', 'createdAt', 'updatedAt'
+        ]) &&
+        data.groupId == groupId &&
+        data.creatorUid is string && data.creatorUid.size() >= 1 && data.creatorUid.size() <= 128 &&
+        data.creatorName is string && data.creatorName.size() >= 2 && data.creatorName.size() <= 60 &&
+        isOptionalString(data, 'creatorPhotoBase64', 220000) &&
+        data.questionTitle is string && data.questionTitle.size() >= 3 && data.questionTitle.size() <= 300 &&
+        isOptionalString(data, 'description', 1000) &&
+        isOptionalString(data, 'imageBase64', 260000) &&
+        data.options is list && data.options.size() >= 2 && data.options.size() <= 5 && data.options[0] is string &&
+        data.status in ['OPEN', 'CLOSED', 'FINALIZED'] &&
+        data.correctOptionIndex is int && data.correctOptionIndex >= -1 && data.correctOptionIndex <= 4 &&
+        isOptionalString(data, 'finalExplanation', 2000) &&
+        (!('solutionImages' in data) || (data.solutionImages is list && data.solutionImages.size() <= 3 && (data.solutionImages.size() == 0 || data.solutionImages[0] is string))) &&
+        (!('solutionContributors' in data) || (data.solutionContributors is list && data.solutionContributors.size() <= 10 && (data.solutionContributors.size() == 0 || data.solutionContributors[0] is string))) &&
+        data.voteCounts is list && data.voteCounts.size() >= 2 && data.voteCounts.size() <= 5 && data.voteCounts[0] is int &&
+        data.totalVotes is int && data.totalVotes >= 0 &&
+        (!('reportCount' in data) || (data.reportCount is int && data.reportCount >= 0 && data.reportCount <= 1000)) &&
+        (!('reportedByUids' in data) || (data.reportedByUids is list && data.reportedByUids.size() <= 500)) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPollPrivateKey(data, groupId, pollId) {
+      return data.keys().hasAll(['groupId', 'pollId', 'creatorUid', 'correctOptionIndex', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['groupId', 'pollId', 'creatorUid', 'correctOptionIndex', 'createdAt', 'updatedAt']) &&
+        data.groupId == groupId &&
+        data.pollId == pollId &&
+        data.creatorUid is string && data.creatorUid.size() >= 1 && data.creatorUid.size() <= 128 &&
+        data.correctOptionIndex is int && data.correctOptionIndex >= 0 && data.correctOptionIndex <= 4 &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPollVote(data, groupId, pollId) {
+      return data.keys().hasAll(['groupId', 'pollId', 'userId', 'voterName', 'selectedOptionIndex', 'createdAt']) &&
+        data.keys().hasOnly(['groupId', 'pollId', 'userId', 'voterName', 'selectedOptionIndex', 'createdAt']) &&
+        data.groupId == groupId &&
+        data.pollId == pollId &&
+        data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+        data.voterName is string && data.voterName.size() >= 2 && data.voterName.size() <= 60 &&
+        data.selectedOptionIndex is int && data.selectedOptionIndex >= 0 && data.selectedOptionIndex <= 4 &&
+        isValidTimestamp(data.createdAt);
+    }
+
+    function isValidDiscussion(data, groupId) {
+      return data.keys().hasAll(['groupId', 'targetType', 'targetId', 'authorUid', 'authorName', 'message', 'commentType', 'createdAt']) &&
+        data.keys().hasOnly([
+          'groupId', 'targetType', 'targetId', 'authorUid', 'authorName', 'authorPhotoBase64',
+          'message', 'commentType', 'parentCommentId', 'solutionImageBase64',
+          'isHelpful', 'helpfulMarkedBy', 'resolved', 'resolvedByUid', 'resolvedNote',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.groupId == groupId &&
+        data.targetType in ['TEST', 'POLL', 'GENERAL'] &&
+        data.targetId is string && data.targetId.size() >= 1 && data.targetId.size() <= 128 &&
+        data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128 &&
+        data.authorName is string && data.authorName.size() >= 2 && data.authorName.size() <= 60 &&
+        isOptionalString(data, 'authorPhotoBase64', 220000) &&
+        data.message is string && data.message.size() >= 1 && data.message.size() <= 1500 &&
+        data.commentType in ['COMMENT', 'REPLY', 'SOLUTION', 'REPORT_QUESTION', 'REPORT_ANSWER', 'CORRECTION_AUDIT'] &&
+        isOptionalString(data, 'parentCommentId', 128) &&
+        isOptionalString(data, 'solutionImageBase64', 260000) &&
+        (!('isHelpful' in data) || data.isHelpful is bool) &&
+        isOptionalString(data, 'helpfulMarkedBy', 128) &&
+        (!('resolved' in data) || data.resolved is bool) &&
+        isOptionalString(data, 'resolvedByUid', 128) &&
+        isOptionalString(data, 'resolvedNote', 500) &&
+        isValidTimestamp(data.createdAt) &&
+        (!('updatedAt' in data) || isValidTimestamp(data.updatedAt));
+    }
+
+    function isValidNotification(data, groupId) {
+      return data.keys().hasAll(['groupId', 'title', 'body', 'type', 'senderUid', 'senderName', 'createdAt']) &&
+        data.keys().hasOnly(['groupId', 'title', 'body', 'type', 'senderUid', 'senderName', 'targetAction', 'dedupKey', 'createdAt']) &&
+        data.groupId == groupId &&
+        data.title is string && data.title.size() >= 2 && data.title.size() <= 120 &&
+        data.body is string && data.body.size() >= 2 && data.body.size() <= 1000 &&
+        data.type in ['TEST', 'RESULT', 'POLL', 'DOUBT', 'CURRENT_AFFAIRS', 'RANKING', 'ANNOUNCEMENT', 'APP_UPDATE'] &&
+        data.senderUid is string && data.senderUid.size() >= 1 && data.senderUid.size() <= 128 &&
+        data.senderName is string && data.senderName.size() >= 2 && data.senderName.size() <= 60 &&
+        isOptionalString(data, 'targetAction', 60) &&
+        isOptionalString(data, 'dedupKey', 120) &&
+        isValidTimestamp(data.createdAt);
+    }
+
+    function isValidAppUpdate(data) {
+      return data.keys().hasAll([
+          'versionName', 'versionCode', 'title', 'releaseNotes', 'updateType',
+          'minSupportedVersionCode', 'downloadUrl', 'fileSizeBytes', 'published',
+          'uploadedByUid', 'uploadedByName', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'versionName', 'versionCode', 'title', 'releaseNotes', 'updateType',
+          'minSupportedVersionCode', 'downloadUrl', 'fileSizeBytes', 'sha256Checksum',
+          'packageName', 'published', 'isActive', 'uploadedByUid', 'uploadedByName', 'groupId',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.versionName is string && data.versionName.size() >= 1 && data.versionName.size() <= 40 &&
+        data.versionCode is int && data.versionCode >= 1 && data.versionCode <= 100000000 &&
+        data.title is string && data.title.size() >= 2 && data.title.size() <= 120 &&
+        data.releaseNotes is string && data.releaseNotes.size() >= 2 && data.releaseNotes.size() <= 4000 &&
+        data.updateType in ['NORMAL', 'MANDATORY'] &&
+        data.minSupportedVersionCode is int && data.minSupportedVersionCode >= 1 &&
+        data.downloadUrl is string && data.downloadUrl.size() >= 8 && data.downloadUrl.size() <= 1000 &&
+        data.downloadUrl.matches('^https://.*') &&
+        data.fileSizeBytes is int && data.fileSizeBytes >= 0 && data.fileSizeBytes <= 2000000000 &&
+        isOptionalString(data, 'sha256Checksum', 128) &&
+        isOptionalString(data, 'packageName', 120) &&
+        data.published is bool &&
+        (!('isActive' in data) || data.isActive is bool) &&
+        data.uploadedByUid is string && data.uploadedByUid.size() >= 1 && data.uploadedByUid.size() <= 128 &&
+        data.uploadedByName is string && data.uploadedByName.size() >= 2 && data.uploadedByName.size() <= 60 &&
+        isOptionalString(data, 'groupId', 128) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidContentView(data, groupId) {
+      return data.keys().hasAll(['groupId', 'contentId', 'contentType', 'userId', 'userName', 'viewedAt']) &&
+        data.keys().hasOnly(['groupId', 'contentId', 'contentType', 'userId', 'userName', 'viewedAt']) &&
+        data.groupId == groupId &&
+        data.contentType in ['BANNER', 'POLL'] &&
+        data.contentId is string && data.contentId.size() >= 1 && data.contentId.size() <= 120 &&
+        data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+        data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 120 &&
+        isValidTimestamp(data.viewedAt);
+    }
+
+    function isValidLiveExam(data, groupId) {
+      return data.keys().hasAll([
+          'groupId', 'sourceSetId', 'sourceSetTitle', 'title', 'category', 'paperType',
+          'startTimeEpochMillis', 'durationMinutes', 'endTimeEpochMillis',
+          'registrationOpenEpochMillis', 'registrationCloseEpochMillis', 'resultPublishEpochMillis',
+          'totalQuestions', 'totalMarks', 'negativeMarkNumerator', 'negativeMarkDenominator',
+          'eligibilityType', 'lateEntryAllowed', 'secureModeEnabled', 'warningLimit',
+          'status', 'createdByUid', 'createdByName', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'groupId', 'sourceSetId', 'sourceSetTitle', 'title', 'description', 'category', 'paperType',
+          'examDateIst', 'startTimeIst', 'startTimeEpochMillis', 'durationMinutes', 'endTimeEpochMillis',
+          'registrationOpenEpochMillis', 'registrationCloseEpochMillis', 'resultPublishEpochMillis',
+          'resultsPublishedManually', 'totalQuestions', 'totalMarks',
+          'negativeMarkNumerator', 'negativeMarkDenominator',
+          'eligibilityType', 'maxParticipants', 'lateEntryAllowed', 'lateEntryCutoffMinutes',
+          'secureModeEnabled', 'dynamicWatermark', 'focusLossDetection', 'copyPasteBlock',
+          'navigationExitLock', 'warningLimit', 'status', 'createdByUid', 'createdByName',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.groupId == groupId &&
+        isValidId(data.sourceSetId) &&
+        data.sourceSetTitle is string && data.sourceSetTitle.size() >= 1 && data.sourceSetTitle.size() <= 160 &&
+        data.title is string && data.title.size() >= 3 && data.title.size() <= 160 &&
+        isOptionalString(data, 'description', 2000) &&
+        data.category is string && data.category.size() >= 1 && data.category.size() <= 80 &&
+        isValidPaperType(data.paperType) &&
+        isOptionalString(data, 'examDateIst', 40) &&
+        isOptionalString(data, 'startTimeIst', 40) &&
+        data.startTimeEpochMillis is number && data.startTimeEpochMillis > 0 &&
+        data.durationMinutes is number && data.durationMinutes >= 1 && data.durationMinutes <= 360 &&
+        data.endTimeEpochMillis is number && data.endTimeEpochMillis >= data.startTimeEpochMillis &&
+        data.registrationOpenEpochMillis is number && data.registrationOpenEpochMillis >= 0 &&
+        data.registrationCloseEpochMillis is number && data.registrationCloseEpochMillis >= data.registrationOpenEpochMillis &&
+        data.resultPublishEpochMillis is number && data.resultPublishEpochMillis >= data.startTimeEpochMillis &&
+        (!('resultsPublishedManually' in data) || data.resultsPublishedManually == null || data.resultsPublishedManually is bool) &&
+        data.totalQuestions is number && data.totalQuestions >= 1 && data.totalQuestions <= 200 &&
+        data.totalMarks is number && data.totalMarks > 0 && data.totalMarks <= 1000 &&
+        data.negativeMarkNumerator is number && data.negativeMarkNumerator >= 0 && data.negativeMarkNumerator <= 10 &&
+        data.negativeMarkDenominator is number && data.negativeMarkDenominator >= 1 && data.negativeMarkDenominator <= 10 &&
+        data.eligibilityType in ['ALL_USERS', 'REGISTERED_ONLY'] &&
+        (!('maxParticipants' in data) || data.maxParticipants == null || (data.maxParticipants is number && data.maxParticipants >= 0 && data.maxParticipants <= 1000000)) &&
+        data.lateEntryAllowed is bool &&
+        (!('lateEntryCutoffMinutes' in data) || data.lateEntryCutoffMinutes == null || (data.lateEntryCutoffMinutes is number && data.lateEntryCutoffMinutes >= 0 && data.lateEntryCutoffMinutes <= 360)) &&
+        data.secureModeEnabled is bool &&
+        (!('dynamicWatermark' in data) || data.dynamicWatermark == null || data.dynamicWatermark is bool) &&
+        (!('focusLossDetection' in data) || data.focusLossDetection == null || data.focusLossDetection is bool) &&
+        (!('copyPasteBlock' in data) || data.copyPasteBlock == null || data.copyPasteBlock is bool) &&
+        (!('navigationExitLock' in data) || data.navigationExitLock == null || data.navigationExitLock is bool) &&
+        data.warningLimit is number && data.warningLimit >= 1 && data.warningLimit <= 20 &&
+        data.status in ['DRAFT', 'PUBLISHED', 'CANCELLED', 'COMPLETED'] &&
+        data.createdByUid is string && data.createdByUid.size() >= 1 && data.createdByUid.size() <= 128 &&
+        data.createdByName is string && data.createdByName.size() >= 1 && data.createdByName.size() <= 80 &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidLiveExamSession(data, groupId) {
+      return data.keys().hasAll([
+          'groupId', 'liveExamId', 'sourceSetId', 'userId', 'userName', 'status',
+          'answeredCount', 'totalQuestions', 'violationCount', 'violationLogs',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'groupId', 'liveExamId', 'sourceSetId', 'userId', 'userName', 'userEmail',
+          'status', 'answeredCount', 'totalQuestions', 'currentQuestionIndex',
+          'savedAnswers', 'violationCount', 'violationLogs', 'finalFiveMinAlertShown',
+          'score', 'maxMarks', 'adminModerationNote', 'moderatedByUid',
+          'registeredAtEpochMillis', 'startedAtEpochMillis', 'submittedAtEpochMillis',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.groupId == groupId &&
+        isValidId(data.liveExamId) &&
+        isValidId(data.sourceSetId) &&
+        data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+        data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 80 &&
+        isOptionalString(data, 'userEmail', 120) &&
+        data.status in ['REGISTERED', 'WAITING_ROOM', 'ACTIVE', 'SUBMITTED', 'FLAGGED', 'APPROVED', 'DISQUALIFIED'] &&
+        data.answeredCount is number && data.answeredCount >= 0 && data.answeredCount <= 200 &&
+        data.totalQuestions is number && data.totalQuestions >= 1 && data.totalQuestions <= 200 &&
+        (!('currentQuestionIndex' in data) || data.currentQuestionIndex == null || (data.currentQuestionIndex is number && data.currentQuestionIndex >= 0 && data.currentQuestionIndex <= 200)) &&
+        (!('savedAnswers' in data) || data.savedAnswers == null || data.savedAnswers is map) &&
+        data.violationCount is number && data.violationCount >= 0 && data.violationCount <= 100 &&
+        data.violationLogs is list && data.violationLogs.size() <= 100 &&
+        (!('finalFiveMinAlertShown' in data) || data.finalFiveMinAlertShown == null || data.finalFiveMinAlertShown is bool) &&
+        (!('score' in data) || data.score == null || data.score is number) &&
+        (!('maxMarks' in data) || data.maxMarks == null || data.maxMarks is number) &&
+        isOptionalString(data, 'adminModerationNote', 500) &&
+        isOptionalString(data, 'moderatedByUid', 128) &&
+        (!('registeredAtEpochMillis' in data) || data.registeredAtEpochMillis == null || data.registeredAtEpochMillis is number) &&
+        (!('startedAtEpochMillis' in data) || data.startedAtEpochMillis == null || data.startedAtEpochMillis is number) &&
+        (!('submittedAtEpochMillis' in data) || data.submittedAtEpochMillis == null || data.submittedAtEpochMillis is number) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidDailyTarget(data, groupId) {
+      return data.keys().hasAll([
+          'groupId', 'testId', 'testTitle', 'targetDateIst', 'bannerTitle',
+          'publishedByUid', 'publishedByName', 'active', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'groupId', 'testId', 'testTitle', 'targetDateIst', 'bannerTitle',
+          'bannerSubtitle', 'bannerImageBase64', 'publishedByUid', 'publishedByName',
+          'active', 'createdAt', 'updatedAt'
+        ]) &&
+        data.groupId == groupId &&
+        isValidId(data.testId) &&
+        data.testTitle is string && data.testTitle.size() >= 2 && data.testTitle.size() <= 160 &&
+        data.targetDateIst is string && data.targetDateIst.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+        data.bannerTitle is string && data.bannerTitle.size() >= 2 && data.bannerTitle.size() <= 120 &&
+        isOptionalString(data, 'bannerSubtitle', 240) &&
+        isOptionalString(data, 'bannerImageBase64', 520000) &&
+        data.publishedByUid is string && data.publishedByUid.size() >= 1 && data.publishedByUid.size() <= 128 &&
+        data.publishedByName is string && data.publishedByName.size() >= 2 && data.publishedByName.size() <= 60 &&
+        data.active is bool &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidCategoryIconKey(categoryKey) {
+      return categoryKey in [
+        'LANGUAGE', 'COMMON', 'LANGUAGE_COMMON', 'MATHEMATICS',
+        'SCIENCE', 'FULL_MATHS_SCIENCE', 'FULL_MATHS'
+      ];
+    }
+
+    function isValidCategoryIconConfig(data, groupId, categoryKey) {
+      return data.keys().hasAll(['groupId', 'categoryKey', 'updatedByUid', 'updatedAt']) &&
+        data.keys().hasOnly(['groupId', 'categoryKey', 'iconKey', 'customIconBase64', 'updatedByUid', 'updatedAt']) &&
+        data.groupId == groupId &&
+        data.categoryKey == categoryKey &&
+        isValidCategoryIconKey(categoryKey) &&
+        isOptionalString(data, 'iconKey', 60) &&
+        isOptionalString(data, 'customIconBase64', 260000) &&
+        data.updatedByUid is string && data.updatedByUid.size() >= 1 && data.updatedByUid.size() <= 128 &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    // ==================== COLLECTION RULES ====================
+
+    // 1. Trusted Main Admin Registry
+    match /admins/{adminUid} {
+      allow get: if isSignedIn() && isValidId(adminUid) && (request.auth.uid == adminUid || isSuperAdmin());
+      allow create, update: if isSuperAdmin() && isValidId(adminUid) && isValidAdminRecord(incoming());
+      allow delete: if isSuperAdmin() && isValidId(adminUid);
+    }
+
+    // 2. Private User Profiles (Owner + Group Admin / Main Admin ONLY; STRICTLY NO User-to-User access)
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (
+        request.auth.uid == userId ||
+        isSuperAdmin() ||
+        (resource != null &&
+          'activeGroupId' in resource.data &&
+          resource.data.activeGroupId is string &&
+          resource.data.activeGroupId.size() > 0 &&
+          isGroupAdmin(resource.data.activeGroupId))
+      );
+      allow list: if isSignedIn() && (
+        isSuperAdmin() ||
+        ('activeGroupId' in resource.data &&
+          resource.data.activeGroupId is string &&
+          resource.data.activeGroupId.size() > 0 &&
+          isGroupAdmin(resource.data.activeGroupId))
+      );
+      allow create: if isSignedIn() &&
+        isValidId(userId) &&
+        request.auth.uid == userId &&
+        isValidUserProfile(incoming()) &&
+        incoming().userId == request.auth.uid &&
+        (incoming().role == 'ASPIRANT' || isSuperAdmin());
+      allow update: if isSignedIn() &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt && (
+          // Action 1: Owner updates own profile/WhatsApp/settings (cannot self-escalate role)
+          (request.auth.uid == userId &&
+            incoming().role == existing().role &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'email', 'whatsappNumber', 'photoBase64',
+              'activeGroupId', 'languagePref', 'publicSharing', 'updatedAt'
+            ])) ||
+          // Action 2: Main Admin updates role
+          (isSuperAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['role', 'updatedAt']))
+        );
+      allow delete: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isSuperAdmin());
+    }
+
+    // 3. Direct Invite Code Lookup (No list allowed to prevent code scraping)
+    match /inviteCodes/{code} {
+      allow get: if isSignedIn() && isValidId(code);
+      allow create: if isSignedIn() &&
+        isValidId(code) &&
+        isValidInviteCode(incoming()) &&
+        incoming().createdByUid == request.auth.uid;
+      allow delete: if isSignedIn() && isValidId(code) && (existing().createdByUid == request.auth.uid || isSuperAdmin());
+    }
+
+    // 4. App Update Releases (Admin-only write; signed-in Users read published releases)
+    match /appUpdates/{updateId} {
+      allow get: if isSignedIn() && isValidId(updateId) && (
+        resource == null ||
+        resource.data.published == true ||
+        isAnyAppUpdateAdmin(resource.data)
+      );
+      allow list: if isSignedIn() && (
+        resource.data.published == true ||
+        isAnyAppUpdateAdmin(resource.data)
+      );
+      allow create: if isSignedIn() &&
+        isValidId(updateId) &&
+        isValidAppUpdate(incoming()) &&
+        incoming().uploadedByUid == request.auth.uid &&
+        isAnyAppUpdateAdmin(incoming());
+      allow update: if isSignedIn() &&
+        isValidId(updateId) &&
+        isValidAppUpdate(incoming()) &&
+        incoming().uploadedByUid == existing().uploadedByUid &&
+        incoming().createdAt == existing().createdAt &&
+        isAnyAppUpdateAdmin(existing());
+      allow delete: if isSignedIn() &&
+        isValidId(updateId) &&
+        isAnyAppUpdateAdmin(existing()) &&
+        existing().get('isActive', false) != true;
+    }
+
+    // 5. Examination Groups & Scoped Subcollections
+    match /groups/{groupId} {
+      allow get: if isSignedIn() && isValidId(groupId);
+      allow list: if isSignedIn() && (resource.data.createdByUid == request.auth.uid || isSuperAdmin());
+      allow create: if isSignedIn() &&
+        isValidId(groupId) &&
+        isValidExamGroup(incoming()) &&
+        incoming().createdByUid == request.auth.uid;
+      allow update: if isSignedIn() &&
+        isValidId(groupId) &&
+        isValidExamGroup(incoming()) &&
+        incoming().createdByUid == existing().createdByUid &&
+        incoming().createdAt == existing().createdAt && (
+          // Action 1: Joining member increments memberCount by 1
+          (incoming().diff(existing()).affectedKeys().hasOnly(['memberCount', 'updatedAt']) &&
+            incoming().memberCount == existing().memberCount + 1) ||
+          // Action 2: Group Admin or Main Admin updates group info
+          (isGroupAdmin(groupId) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'memberCount', 'updatedAt']))
+        );
+      allow delete: if isSignedIn() && isValidId(groupId) && (existing().createdByUid == request.auth.uid || isSuperAdmin());
+
+      // 5a. Official Admin Contact Profile (Readable by group members for User->Admin WhatsApp; Writable ONLY by Admin)
+      match /adminContact/{contactId} {
+        allow get: if (isGroupMember(groupId) || isSuperAdmin()) && isValidId(contactId) &&
+          (resource == null || resource.data.groupId == groupId);
+        allow list: if (isGroupMember(groupId) || isSuperAdmin()) && resource.data.groupId == groupId;
+        allow create, update: if isSignedIn() &&
+          isValidId(contactId) &&
+          isGroupAdmin(groupId) &&
+          isValidAdminContact(incoming(), groupId);
+        allow delete: if isSignedIn() && isValidId(contactId) && isGroupAdmin(groupId);
+      }
+
+      // 5b. Group Members & Public Leaderboard Stats (Zero PII — never stores email or WhatsApp)
+      match /members/{memberId} {
+        allow get: if isSignedIn() && isValidId(memberId) &&
+          (request.auth.uid == memberId || isGroupMember(groupId) || isSuperAdmin()) &&
+          (resource == null || resource.data.groupId == groupId);
+        allow list: if (isGroupMember(groupId) || isSuperAdmin()) && resource.data.groupId == groupId;
+        allow create: if isSignedIn() &&
+          isValidId(memberId) &&
+          request.auth.uid == memberId &&
+          isValidGroupMember(incoming(), groupId) &&
+          incoming().userId == request.auth.uid &&
+          exists(/databases/$(database)/documents/groups/$(groupId)) && (
+            incoming().role == 'ASPIRANT' ||
+            isSuperAdmin() ||
+            (incoming().role == 'GROUP_ADMIN' &&
+              get(/databases/$(database)/documents/groups/$(groupId)).data.createdByUid == request.auth.uid)
+          );
+        allow update: if isSignedIn() &&
+          isValidId(memberId) &&
+          isValidGroupMember(incoming(), groupId) &&
+          incoming().groupId == existing().groupId &&
+          incoming().userId == existing().userId &&
+          incoming().joinedAt == existing().joinedAt && (
+            // Action 1: Member updates own display profile
+            (request.auth.uid == memberId &&
+              incoming().role == existing().role &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoBase64', 'publicSharing', 'updatedAt'])) ||
+            // Action 2: Member syncs own evaluated test score aggregates (monotonic attempt count, bounded scores)
+            (request.auth.uid == memberId &&
+              incoming().role == existing().role &&
+              incoming().gsTestsAttempted >= existing().gsTestsAttempted &&
+              incoming().gsAverageScore >= -50 && incoming().gsAverageScore <= 150 &&
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'gsTestsAttempted', 'gsTotalScore', 'gsAverageScore', 'gsHighestScore', 'gsLowestScore',
+                'latestGsScore', 'latestGsTestTitle', 'weeklyGsTotal', 'weeklyGsCount',
+                'monthlyGsTotal', 'monthlyGsCount', 'langScore', 'langHindiScore',
+                'langEnglishScore', 'langStatus', 'previousRank', 'updatedAt'
+              ])) ||
+            // Action 3: Group Admin / Main Admin updates member role (non-MainAdmin cannot grant SUPER_ADMIN)
+            (isGroupAdmin(groupId) &&
+              (incoming().role != 'SUPER_ADMIN' || isSuperAdmin()) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['role', 'updatedAt'])) ||
+            // Action 4: Group Admin / Main Admin resets member trial stats to zero for Fresh Launch wipe
+            (isGroupAdmin(groupId) &&
+              incoming().role == existing().role &&
+              incoming().gsTestsAttempted == 0 &&
+              incoming().gsTotalScore == 0 &&
+              incoming().gsAverageScore == 0 &&
+              incoming().langStatus == 'NOT_ATTEMPTED' &&
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'gsTestsAttempted', 'gsTotalScore', 'gsAverageScore', 'gsHighestScore', 'gsLowestScore',
+                'latestGsScore', 'latestGsTestTitle', 'weeklyGsTotal', 'weeklyGsCount',
+                'monthlyGsTotal', 'monthlyGsCount', 'langScore', 'langHindiScore',
+                'langEnglishScore', 'langStatus', 'previousRank', 'updatedAt'
+              ]))
+          );
+        allow delete: if isSignedIn() && isValidId(memberId) && (request.auth.uid == memberId || isGroupAdmin(groupId));
+      }
+
+      // 5c. Question Sets & Published Tests (STRICT ADMIN-ONLY Create/Edit/Delete/Icon/Publish)
+      match /tests/{testId} {
+        allow get: if (isGroupMember(groupId) || isSuperAdmin()) &&
+          isValidId(testId) &&
+          resource.data.groupId == groupId && (
+            isGroupAdmin(groupId) ||
+            (resource.data.status == 'PUBLISHED' && (
+              !('visibleToUids' in resource.data) ||
+              'ALL' in resource.data.visibleToUids ||
+              request.auth.uid in resource.data.visibleToUids
+            ))
+          );
+        allow list: if (isGroupMember(groupId) || isSuperAdmin()) && (
+          (isGroupAdmin(groupId) && resource.data.groupId == groupId) ||
+          ('ALL' in resource.data.visibleToUids || request.auth.uid in resource.data.visibleToUids)
+        );
+        allow create: if isSignedIn() &&
+          isValidId(testId) &&
+          isGroupAdmin(groupId) &&
+          isValidExamTest(incoming(), groupId) &&
+          incoming().creatorUid == request.auth.uid &&
+          incoming().attemptCount == 0;
+        allow update: if isSignedIn() &&
+          isValidId(testId) &&
+          (!('groupId' in existing()) || incoming().groupId == existing().groupId) &&
+          (!('creatorUid' in existing()) || incoming().creatorUid == existing().creatorUid) &&
+          (!('createdAt' in existing()) || incoming().createdAt == existing().createdAt) && (
+            // Action 1: Group member increments attemptCount on PUBLISHED test submission ONLY.
+            // IMPORTANT: Check attemptCount increment FIRST so Admin edits short-circuit immediately
+            // without running deep diff() over 70-Q / 150-Q `questions` lists (avoids 1000-expression limit!).
+            (incoming().attemptCount == existing().attemptCount + 1 &&
+              existing().status == 'PUBLISHED' &&
+              isGroupMember(groupId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['attemptCount', 'updatedAt']) &&
+              isValidTimestamp(incoming().updatedAt)) ||
+            // Action 2: Group Admin / Main Admin edits test content, questions, icon, visibility, scoring & rules safely.
+            // Uses top-level keyset difference + direct immutability guards instead of deep MapDiff over 70-150 questions.
+            (isGroupAdmin(groupId) &&
+              (!('attemptCount' in existing()) || incoming().attemptCount == existing().attemptCount) &&
+              (!('paperType' in existing()) || incoming().paperType == existing().paperType) &&
+              incoming().keys().removeAll(existing().keys()).hasOnly([
+                'title', 'difficulty', 'status', 'durationMinutes', 'questions', 'questionCount',
+                'negativeMarkNumerator', 'negativeMarkDenominator', 'unattemptedPenalty',
+                'answerReleaseMode', 'scheduledAt', 'approvedForAll', 'approvedMemberIds',
+                'visibleToUids', 'iconKey', 'customIconBase64', 'customIconUrl', 'bannerImageBase64',
+                'setType', 'classLevel', 'positiveMarks', 'optionEMode', 'cutoffMarks',
+                'pauseAllowed', 'langPassMarks', 'langMinHindi', 'langMinEnglish',
+                'langFailRankPolicy', 'tieBreakPolicy', 'assembledFromTestIds', 'setNumber',
+                'updatedAt'
+              ]) &&
+              isValidAdminTestContentUpdate(incoming()))
+          );
+        allow delete: if isSignedIn() && isValidId(testId) && isGroupAdmin(groupId);
+      }
+
+      // 5d. Locked Test Attempts (Duplicate submission prevented via attemptId == testId_userId)
+      match /attempts/{attemptId} {
+        allow get: if (isGroupMember(groupId) || isGroupAdmin(groupId)) && isValidId(attemptId) &&
+          (resource == null || resource.data.groupId == groupId);
+        allow list: if (isGroupMember(groupId) || isGroupAdmin(groupId)) && resource.data.groupId == groupId;
+        allow create: if isSignedIn() &&
+          isValidId(attemptId) &&
+          isValidTestAttempt(incoming(), groupId) &&
+          incoming().userId == request.auth.uid &&
+          attemptId == (incoming().testId + '_' + request.auth.uid) &&
+          (isGroupMember(groupId) || isSuperAdmin());
+        allow update: if false;
+        allow delete: if isSignedIn() && isValidId(attemptId) && isGroupAdmin(groupId);
+      }
+
+      // 5d-2. Strictly Isolated Solution Reattempts (NEVER modifies Original Attempt or Ranking)
+      match /solutionReattempts/{reattemptId} {
+        allow get: if isSignedIn() && isValidId(reattemptId) && (
+          resource == null ||
+          resource.data.userId == request.auth.uid ||
+          isGroupAdmin(groupId)
+        );
+        allow list: if isSignedIn() && (
+          (resource.data.groupId == groupId && resource.data.userId == request.auth.uid) ||
+          (resource.data.groupId == groupId && isGroupAdmin(groupId))
+        );
+        allow create, update: if isSignedIn() &&
+          isValidId(reattemptId) &&
+          isValidSolutionReattempt(incoming(), groupId) &&
+          incoming().userId == request.auth.uid &&
+          reattemptId == (incoming().testId + '_' + request.auth.uid) &&
+          (isGroupMember(groupId) || isSuperAdmin());
+        allow delete: if isSignedIn() && isValidId(reattemptId) &&
+          (existing().userId == request.auth.uid || isGroupAdmin(groupId));
+      }
+
+      // 5d-3. User Bookmarked Revision Questions (Strictly private to owner)
+      match /bookmarks/{bookmarkId} {
+        allow get: if isSignedIn() && isValidId(bookmarkId) && (
+          resource == null || resource.data.userId == request.auth.uid
+        );
+        allow list: if isSignedIn() && resource.data.groupId == groupId && resource.data.userId == request.auth.uid;
+        allow create: if isSignedIn() &&
+          isValidId(bookmarkId) &&
+          isValidBookmark(incoming(), groupId) &&
+          incoming().userId == request.auth.uid &&
+          (isGroupMember(groupId) || isSuperAdmin());
+        allow update: if false;
+        allow delete: if isSignedIn() && isValidId(bookmarkId) &&
+          (existing().userId == request.auth.uid || isGroupAdmin(groupId));
+      }
+
+      // 5e. Daily Current Affairs Image Banner (Admin-only write)
+      match /currentAffairs/{itemId} {
+        allow get: if (isGroupMember(groupId) || isSuperAdmin()) && isValidId(itemId) && resource.data.groupId == groupId;
+        allow list: if (isGroupMember(groupId) || isSuperAdmin()) && resource.data.groupId == groupId;
+        allow create: if isSignedIn() &&
+          isValidId(itemId) &&
+          isValidCurrentAffair(incoming(), groupId) &&
+          incoming().publishedByUid == request.auth.uid &&
+          isGroupAdmin(groupId);
+        allow update: if isSignedIn() &&
+          isValidId(itemId) &&
+          isValidCurrentAffair(incoming(), groupId) &&
+          incoming().groupId == existing().groupId &&
+          incoming().publishedByUid == existing().publishedByUid &&
+          incoming().createdAt == existing().createdAt &&
+          isGroupAdmin(groupId) &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['title', 'summary', 'dateLabel', 'source', 'imageBase64', 'category', 'updatedAt']);
+        allow delete: if isSignedIn() && isValidId(itemId) && isGroupAdmin(groupId);
+      }
+
+      // 5f. Interactive Photo Question Polls (All group Users can create, vote, solve, report; Creator/Admin finalizes & deletes)
+      match /polls/{pollId} {
+        allow get: if (isGroupMember(groupId) || isSuperAdmin()) && isValidId(pollId) && resource.data.groupId == groupId;
+        allow list: if (isGroupMember(groupId) || isSuperAdmin()) && resource.data.groupId == groupId;
+        allow create: if isSignedIn() &&
+          isValidId(pollId) &&
+          isValidQuestionPoll(incoming(), groupId) &&
+          incoming().creatorUid == request.auth.uid &&
+          incoming().status == 'OPEN' &&
+          incoming().correctOptionIndex == -1 &&
+          incoming().totalVotes == 0 &&
+          (isGroupMember(groupId) || isSuperAdmin());
+        allow update: if isSignedIn() &&
+          isValidId(pollId) &&
+          isValidQuestionPoll(incoming(), groupId) &&
+          incoming().groupId == existing().groupId &&
+          incoming().creatorUid == existing().creatorUid &&
+          incoming().createdAt == existing().createdAt && (
+            // Action 1: Group member casts vote while poll is OPEN
+            (existing().status == 'OPEN' &&
+              isGroupMember(groupId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['voteCounts', 'totalVotes', 'updatedAt']) &&
+              incoming().totalVotes == existing().totalVotes + 1) ||
+            // Action 2: Creator or Admin closes or finalizes poll answer
+            ((existing().creatorUid == request.auth.uid || isGroupAdmin(groupId)) &&
+              (existing().status != 'FINALIZED' || isGroupAdmin(groupId)) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['status', 'correctOptionIndex', 'finalExplanation', 'updatedAt'])) ||
+            // Action 3: Member uploads image-based solution or explanation
+            (isGroupMember(groupId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['solutionImages', 'solutionContributors', 'finalExplanation', 'updatedAt'])) ||
+            // Action 4: Member reports spam/inappropriate poll (max once per user)
+            (isGroupMember(groupId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['reportCount', 'reportedByUids', 'updatedAt']) &&
+              request.auth.uid in incoming().reportedByUids &&
+              incoming().reportCount == (existing().get('reportCount', 0) + 1))
+          );
+        allow delete: if isSignedIn() && isValidId(pollId) && (existing().creatorUid == request.auth.uid || isGroupAdmin(groupId));
+
+        // Creator-only hidden answer key before finalization
+        match /privateKey/{keyId} {
+          allow get: if isSignedIn() && isValidId(keyId) && (existing().creatorUid == request.auth.uid || isGroupAdmin(groupId));
+          allow list: if isSignedIn() && isGroupAdmin(groupId);
+          allow create: if isSignedIn() &&
+            keyId == 'answer' &&
+            isValidPollPrivateKey(incoming(), groupId, pollId) &&
+            incoming().creatorUid == request.auth.uid &&
+            (isGroupMember(groupId) || isSuperAdmin());
+          allow update: if isSignedIn() &&
+            keyId == 'answer' &&
+            isValidPollPrivateKey(incoming(), groupId, pollId) &&
+            incoming().creatorUid == existing().creatorUid &&
+            incoming().createdAt == existing().createdAt &&
+            (existing().creatorUid == request.auth.uid || isGroupAdmin(groupId)) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['correctOptionIndex', 'updatedAt']);
+          allow delete: if isSignedIn() && isValidId(keyId) && (existing().creatorUid == request.auth.uid || isGroupAdmin(groupId));
+        }
+
+        // One-vote-per-user subcollection
+        match /votes/{voterId} {
+          allow get: if isSignedIn() && isValidId(voterId) && (request.auth.uid == voterId || isGroupAdmin(groupId));
+          allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isGroupAdmin(groupId));
+          allow create: if isSignedIn() &&
+            voterId == request.auth.uid &&
+            isValidPollVote(incoming(), groupId, pollId) &&
+            incoming().userId == request.auth.uid &&
+            (isGroupMember(groupId) || isSuperAdmin());
+          allow update: if false;
+          allow delete: if isSignedIn() && isValidId(voterId) && isGroupAdmin(groupId);
+        }
+      }
+
+      // 5g. Doubt Discussions, Replies, Helpful Answers, Reports & Audit Trail
+      match /discussions/{commentId} {
+        allow get: if (isGroupMember(groupId) || isSuperAdmin()) && isValidId(commentId) && resource.data.groupId == groupId;
+        allow list: if (isGroupMember(groupId) || isSuperAdmin()) && resource.data.groupId == groupId;
+        allow create: if isSignedIn() &&
+          isValidId(commentId) &&
+          isValidDiscussion(incoming(), groupId) &&
+          incoming().authorUid == request.auth.uid &&
+          (isGroupMember(groupId) || isSuperAdmin());
+        allow update: if isSignedIn() &&
+          isValidId(commentId) &&
+          isValidDiscussion(incoming(), groupId) &&
+          incoming().groupId == existing().groupId &&
+          incoming().authorUid == existing().authorUid &&
+          incoming().createdAt == existing().createdAt && (
+            // Action 1: Author edits own doubt/reply message
+            (existing().authorUid == request.auth.uid &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['message', 'updatedAt'])) ||
+            // Action 2: Admin OR parent doubt author marks/unmarks a reply as Helpful
+            ((isGroupAdmin(groupId) || (
+                'parentCommentId' in existing() &&
+                existing().parentCommentId is string &&
+                existing().parentCommentId.size() > 0 &&
+                get(/databases/$(database)/documents/groups/$(groupId)/discussions/$(existing().parentCommentId)).data.authorUid == request.auth.uid
+              )) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['isHelpful', 'helpfulMarkedBy', 'updatedAt'])) ||
+            // Action 3: Group Admin / Main Admin resolves reported question / answer key ticket
+            (isGroupAdmin(groupId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['resolved', 'resolvedByUid', 'resolvedNote', 'updatedAt']))
+          );
+        allow delete: if isSignedIn() && isValidId(commentId) && (existing().authorUid == request.auth.uid || isGroupAdmin(groupId));
+      }
+
+      // 5h. Group Notifications & Announcements
+      match /notifications/{notifId} {
+        allow get: if (isGroupMember(groupId) || isSuperAdmin()) && isValidId(notifId) && resource.data.groupId == groupId;
+        allow list: if (isGroupMember(groupId) || isSuperAdmin()) && resource.data.groupId == groupId;
+        allow create: if isSignedIn() &&
+          isValidId(notifId) &&
+          isValidNotification(incoming(), groupId) &&
+          incoming().senderUid == request.auth.uid && (
+            isGroupAdmin(groupId) ||
+            (isGroupMember(groupId) && incoming().type in ['POLL', 'DOUBT'])
+          );
+        allow delete: if isSignedIn() && isValidId(notifId) && isGroupAdmin(groupId);
+      }
+
+      // 5i. Unique Content Views for Banners & Polls (Member create-only own doc; Admin-only list)
+      match /contentViews/{viewId} {
+        allow get: if isSignedIn() && isValidId(viewId) && (
+          isSuperAdmin() ||
+          isGroupAdmin(groupId) ||
+          (resource != null && resource.data.userId == request.auth.uid) ||
+          viewId.matches('^(BANNER|POLL)_.*_' + request.auth.uid + '$')
+        );
+        allow list: if isSignedIn() && (isSuperAdmin() || isGroupAdmin(groupId)) && resource.data.groupId == groupId;
+        allow create: if isSignedIn() &&
+          isValidId(viewId) &&
+          (isGroupMember(groupId) || isSuperAdmin()) &&
+          isValidContentView(incoming(), groupId) &&
+          incoming().userId == request.auth.uid &&
+          viewId == (incoming().contentType + '_' + incoming().contentId + '_' + request.auth.uid);
+        allow update: if false;
+        allow delete: if isSignedIn() && isValidId(viewId) && (isSuperAdmin() || isGroupAdmin(groupId));
+      }
+
+      // 5j. Scheduled Live Exams (Linked to existing question sets via sourceSetId; Admin-only create/update/delete)
+      match /liveExams/{liveExamId} {
+        allow get: if (isGroupMember(groupId) || isSuperAdmin() || isGroupAdmin(groupId)) &&
+          isValidId(liveExamId) &&
+          (resource == null || resource.data.groupId == groupId);
+        allow list: if (isGroupMember(groupId) || isSuperAdmin() || isGroupAdmin(groupId)) &&
+          resource.data.groupId == groupId;
+        allow create: if isSignedIn() &&
+          isValidId(liveExamId) &&
+          isGroupAdmin(groupId) &&
+          isValidLiveExam(incoming(), groupId);
+        allow update: if isSignedIn() &&
+          isValidId(liveExamId) &&
+          isGroupAdmin(groupId) &&
+          isValidLiveExam(incoming(), groupId) &&
+          incoming().groupId == existing().groupId &&
+          incoming().createdAt == existing().createdAt;
+        allow delete: if isSignedIn() && isValidId(liveExamId) && isGroupAdmin(groupId);
+      }
+
+      // 5k. Live Exam Participant Sessions, Violation Logs & Admin Moderation (Keyed by liveExamId_userId)
+      match /liveExamSessions/{sessionId} {
+        allow get: if (isGroupMember(groupId) || isSuperAdmin() || isGroupAdmin(groupId)) &&
+          isValidId(sessionId) &&
+          (resource == null || resource.data.groupId == groupId);
+        allow list: if (isGroupMember(groupId) || isSuperAdmin() || isGroupAdmin(groupId)) &&
+          resource.data.groupId == groupId;
+        allow create: if isSignedIn() &&
+          isValidId(sessionId) &&
+          (isGroupMember(groupId) || isSuperAdmin() || isGroupAdmin(groupId)) &&
+          isValidLiveExamSession(incoming(), groupId) &&
+          incoming().userId == request.auth.uid &&
+          sessionId == (incoming().liveExamId + '_' + request.auth.uid);
+        allow update: if isSignedIn() &&
+          isValidId(sessionId) &&
+          isValidLiveExamSession(incoming(), groupId) &&
+          incoming().groupId == existing().groupId &&
+          incoming().liveExamId == existing().liveExamId &&
+          incoming().userId == existing().userId &&
+          incoming().createdAt == existing().createdAt && (
+            // Action 1: Owner updates registration, waiting room, answers, violation log, or submission
+            (request.auth.uid == existing().userId &&
+              existing().status != 'DISQUALIFIED' &&
+              incoming().status in ['REGISTERED', 'WAITING_ROOM', 'ACTIVE', 'SUBMITTED', 'FLAGGED']) ||
+            // Action 2: Group Admin / Main Admin approves or disqualifies session
+            isGroupAdmin(groupId)
+          );
+        allow delete: if isSignedIn() && isValidId(sessionId) && isGroupAdmin(groupId);
+      }
+
+      // 5l. Admin-Assigned Daily Target Set Photo Banners (Aaj Ka Target + Yesterday Missed Rollover + Next Day Scheduler)
+      match /dailyTargets/{targetId} {
+        allow get: if (isGroupMember(groupId) || isGroupAdmin(groupId)) &&
+          isValidId(targetId) &&
+          (resource == null || resource.data.groupId == groupId);
+        allow list: if (isGroupMember(groupId) || isGroupAdmin(groupId)) &&
+          resource.data.groupId == groupId;
+        allow create: if isSignedIn() &&
+          isValidId(targetId) &&
+          isGroupAdmin(groupId) &&
+          incoming().publishedByUid == request.auth.uid &&
+          isValidDailyTarget(incoming(), groupId);
+        allow update: if isSignedIn() &&
+          isValidId(targetId) &&
+          isGroupAdmin(groupId) &&
+          isValidDailyTarget(incoming(), groupId) &&
+          incoming().groupId == existing().groupId &&
+          incoming().createdAt == existing().createdAt;
+        allow delete: if isSignedIn() && isValidId(targetId) && isGroupAdmin(groupId);
+      }
+
+      // 5m. Admin-Managed 7-Category Default Set Icons (Upload once per category; inherited by all sets in that category)
+      match /categoryIcons/{categoryKey} {
+        allow get: if (isGroupMember(groupId) || isGroupAdmin(groupId) || isSuperAdmin()) &&
+          isValidCategoryIconKey(categoryKey) &&
+          (resource == null || resource.data.groupId == groupId);
+        allow list: if (isGroupMember(groupId) || isGroupAdmin(groupId) || isSuperAdmin()) &&
+          resource.data.groupId == groupId;
+        allow create, update: if isSignedIn() &&
+          isGroupAdmin(groupId) &&
+          isValidCategoryIconKey(categoryKey) &&
+          incoming().updatedByUid == request.auth.uid &&
+          isValidCategoryIconConfig(incoming(), groupId, categoryKey);
+        allow delete: if isSignedIn() && isGroupAdmin(groupId) && isValidCategoryIconKey(categoryKey);
+      }
+    }
+  }
+}

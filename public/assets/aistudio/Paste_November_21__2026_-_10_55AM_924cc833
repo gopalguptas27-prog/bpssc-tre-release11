@@ -1,0 +1,1222 @@
+ULTIMATE FINAL MASTER PROMPT
+
+TRE 4.0 – PREMIUM ASPIRANT EXAMINATION, COLLABORATIVE TEST, CURRENT AFFAIRS, POLL & LIVE RANKING PLATFORM
+
+Act as a world-class Android application architect, senior Kotlin developer, Firebase backend engineer, examination system specialist, database architect and premium UI/UX designer.
+
+I want you to build a complete, production-ready Android application named:
+
+TRE 4.0 – ASPIRANT TEST & RANKING PLATFORM
+
+This application is designed for competitive examination aspirants preparing for Bihar BPSC TRE 4.0.
+
+The application must support 200+ users initially, with an architecture that can scale further.
+
+IMPORTANT TERMINOLOGY RULE:
+
+Never use the word "Student" anywhere in the application.
+
+Use these terms:
+
+- हिंदी: अभ्यर्थी
+- English: Aspirant
+- Main Admin: मुख्य एडमिन
+- Group Admin: ग्रुप एडमिन
+- Question Creator: प्रश्न निर्माता
+
+The application must be fully functional, connected to a real centralized backend and not just a UI prototype.
+
+PART 1 – DEVELOPMENT STRATEGY: BUILD THE APPLICATION IN PHASES
+
+THIS IS A CRITICAL DEVELOPMENT INSTRUCTION.
+
+Do not attempt to build every module simultaneously in one unstructured development process.
+
+Develop the application in the following phases, in the exact order mentioned below.
+
+The entire project must use one common architecture, one Firebase project and one centralized database throughout all phases.
+
+PHASE 1 – BACKEND, AUTHENTICATION & GROUP SYSTEM
+
+First complete and test the following:
+
+1. Firebase project configuration.
+2. Firebase Authentication.
+3. Gmail registration and login.
+4. Unique Firebase UID for every user.
+5. First-time display name registration.
+6. Profile photo upload.
+7. Profile editing.
+8. User role management.
+9. Group creation.
+10. Group joining using invitation code.
+11. Group membership management.
+12. Centralized Cloud Firestore database.
+13. Firebase Storage.
+14. Firestore Security Rules.
+15. Role-based access permissions.
+16. Real-time data synchronization.
+
+Create a proper database architecture before developing the remaining modules.
+
+PHASE 1 ACCEPTANCE TEST:
+
+Register at least three different Gmail accounts on three different devices.
+
+Verify that all accounts connect to the same Firebase project and can see authorized shared group information.
+
+Do not proceed to Phase 2 until authentication, profiles, group membership and centralized database synchronization work correctly.
+
+PHASE 2 – QUESTION BANK & COMMON TEST SYSTEM
+
+Build:
+
+- Question creation.
+- Bulk question import.
+- Five-option MCQ format.
+- Test publishing.
+- Test scheduling.
+- Online examination.
+- Automatic answer evaluation.
+- Negative marking.
+- Test history.
+- Result calculation.
+
+Test this functionality using multiple independent accounts.
+
+PHASE 3 – RESULT, AVERAGE SCORE & LIVE RANKING
+
+Build:
+
+- Individual test ranking.
+- Daily ranking.
+- Weekly ranking.
+- Monthly ranking.
+- Overall average ranking.
+- Performance analytics.
+- PDF result generation.
+- Ranking image generation.
+- WhatsApp sharing.
+
+Verify that the same ranking appears on every authorized device.
+
+PHASE 4 – CURRENT AFFAIRS & INTERACTIVE POLL
+
+Build:
+
+- Daily Current Affairs image slider.
+- Image-based question uploading.
+- Interactive poll.
+- Five-option voting.
+- Creator-controlled answer verification.
+- Image-based solution uploading.
+- Comments and discussions.
+
+PHASE 5 – COMPLETE APPLICATION INTEGRATION & TESTING
+
+Integrate all modules into one consistent application.
+
+Perform:
+
+- Complete functional testing.
+- Firebase security testing.
+- Multi-account testing.
+- Concurrent usage testing.
+- UI/UX testing.
+- Performance optimization.
+- Bug fixing.
+- APK generation.
+
+IMPORTANT:
+
+Do not create separate applications or separate Firebase projects for different phases. Continue developing the same Android project.
+
+PART 2 – TECHNOLOGY STACK
+
+Use:
+
+- Kotlin
+- Jetpack Compose
+- Material Design 3
+- MVVM Architecture
+- Clean Architecture
+- Firebase Authentication
+- Cloud Firestore
+- Firebase Storage
+- Firebase Cloud Messaging
+- Firebase Cloud Functions
+- Kotlin Coroutines and Flows
+- Hilt
+- Navigation Compose
+- WorkManager
+
+Use server-side trusted functions for score verification, answer-key protection and authoritative ranking calculations.
+
+Never expose API keys or private credentials inside the Android application.
+
+PART 3 – CENTRALIZED MULTI-USER SYSTEM
+
+This is the most important architectural requirement.
+
+Use ONE Firebase project and ONE centralized Cloud Firestore database for all users.
+
+Every user will log in through their own Gmail account.
+
+Example:
+
+- Rahul Kumar – Gmail Account 1
+- Amit Kumar – Gmail Account 2
+- Sumit Kumar – Gmail Account 3
+- Rohit Kumar – Gmail Account 4
+
+All four users must connect to the same central database.
+
+Every user must have:
+
+- Unique Firebase UID.
+- Display name.
+- Profile photo.
+- Group ID.
+- Account role.
+- Test history.
+- Result history.
+- Average score.
+- Ranking information.
+
+All published sets and common results must be synchronized across authorized devices.
+
+Do not create separate databases for different Gmail accounts.
+
+PART 4 – REGISTRATION & PERSONAL PROFILE
+
+After Gmail login, ask the user to enter their display name.
+
+Example:
+
+Gmail Login: private email account.
+
+Display Name: Rahul Kumar.
+
+The chosen display name will be used throughout the application.
+
+PROFILE FEATURES:
+
+1. Upload profile photo from gallery.
+2. Capture profile photo using camera.
+3. Preview profile photo.
+4. Crop and adjust photo.
+5. Change profile photo.
+6. Edit display name.
+7. View personal test history.
+8. View average score.
+9. View current rank.
+10. View created question sets.
+11. View uploaded polls.
+12. View personal activity.
+
+Profile images must be stored in Firebase Storage.
+
+Display names and profile photos should be visible to authorized members of the same group.
+
+Never publicly expose personal Gmail addresses.
+
+Every set, question contribution, poll and result must display the creator's chosen name and profile image.
+
+PART 5 – USER ROLES
+
+Create the following roles:
+
+1. SUPER ADMIN
+
+- Full application control.
+- Manage groups.
+- Manage administrators.
+- Manage aspirants.
+- Approve question sets.
+- Publish official tests.
+- Manage answer keys.
+- Manage Current Affairs.
+- Manage polls.
+- View all scores.
+- View all rankings.
+- Export reports.
+
+2. GROUP ADMIN
+
+- Manage assigned group.
+- Review question sets.
+- Approve permitted contributions.
+- Publish authorized tests.
+- Manage group members.
+- Moderate polls.
+- View group results.
+
+3. QUESTION CONTRIBUTOR
+
+- Create question sets.
+- Import bulk questions.
+- Submit questions.
+- Create permitted polls.
+- Upload solutions.
+
+4. ASPIRANT
+
+- Attempt common tests.
+- Create permitted sets.
+- View other members' scores.
+- View ranking.
+- Upload profile photo.
+- Create question polls.
+- Participate in polls.
+- Upload permitted solutions.
+- Download test PDFs.
+
+Permissions must be assigned securely by authorized administrators.
+
+No user can grant themselves administrator privileges.
+
+PART 6 – COMMON TEST PAPER: EXACTLY 40 QUESTIONS
+
+The official Common Mock Test must contain exactly 40 questions.
+
+Subject-wise distribution:
+
+Subject| Questions
+Mathematics – NCERT + SCERT Class 6–10| 8
+General Science – NCERT + SCERT Class 6–10| 8
+Indian National Movement / History| 8
+Geography – NCERT + SCERT Class 6–8| 8
+Current Affairs – PIB-based| 8
+TOTAL| 40
+
+MATHEMATICS
+
+Include:
+
+- Number System.
+- Simplification.
+- Percentage.
+- Ratio and Proportion.
+- Average.
+- Profit and Loss.
+- Simple Interest.
+- Time and Work.
+- Speed, Time and Distance.
+- Algebra.
+- Geometry.
+- Mensuration.
+
+Sources: NCERT and Bihar SCERT Class 6–10.
+
+GENERAL SCIENCE
+
+Include:
+
+- Physics.
+- Chemistry.
+- Biology.
+- Human Body.
+- Everyday Science.
+- Scientific Discoveries.
+- Important Scientific Concepts.
+
+Sources: NCERT and Bihar SCERT Class 6–10.
+
+INDIAN NATIONAL MOVEMENT / HISTORY
+
+Include:
+
+- Revolt of 1857.
+- Formation of Indian National Congress.
+- Partition of Bengal.
+- Swadeshi Movement.
+- Non-Cooperation Movement.
+- Civil Disobedience Movement.
+- Quit India Movement.
+- Gandhi Era.
+- Bihar's contribution to the freedom struggle.
+
+GEOGRAPHY
+
+Include:
+
+- Physical Geography.
+- Indian Geography.
+- Rivers and Mountains.
+- Climate.
+- Soil.
+- Agriculture.
+- Minerals.
+- Bihar Geography.
+
+Sources: NCERT and Bihar SCERT Class 6–8.
+
+CURRENT AFFAIRS
+
+Use:
+
+- PIB official releases.
+- Government schemes.
+- National events.
+- International events.
+- Important appointments.
+- Awards.
+- Science and Technology.
+- Bihar Government official updates.
+
+All current affairs must be date-specific and factually verified.
+
+PART 7 – ADDITIONAL LANGUAGE QUALIFYING PAPER
+
+Apart from the 40-question Common GS Paper, provide a separate 30-mark Language Qualifying Test.
+
+This is a mandatory separate examination module.
+
+LANGUAGE PAPER DISTRIBUTION
+
+Subject| Questions| Marks
+Hindi| 22| 22
+English| 8| 8
+TOTAL| 30| 30
+
+Each question carries 1 mark.
+
+HINDI LANGUAGE – 22 QUESTIONS
+
+Include high-quality examination-oriented questions on:
+
+- हिंदी व्याकरण।
+- संधि।
+- समास।
+- उपसर्ग एवं प्रत्यय।
+- पर्यायवाची शब्द।
+- विलोम शब्द।
+- तत्सम एवं तद्भव।
+- मुहावरे एवं लोकोक्तियाँ।
+- वाक्य शुद्धि।
+- अशुद्धि संशोधन।
+- शब्द एवं वाक्य प्रयोग।
+- अपठित गद्यांश।
+- हिंदी भाषा की समझ।
+
+ENGLISH LANGUAGE – 8 QUESTIONS
+
+Include:
+
+- Grammar.
+- Tenses.
+- Articles.
+- Prepositions.
+- Subject-Verb Agreement.
+- Vocabulary.
+- Synonyms and Antonyms.
+- Sentence Correction.
+- Reading Comprehension.
+
+IMPORTANT LANGUAGE QUESTION QUALITY:
+
+Questions must be examination-oriented, meaningful, grammatically correct and appropriate for the relevant competitive examination level.
+
+Avoid trivial, repetitive or artificially generated questions.
+
+Use high-quality educational references.
+
+LANGUAGE QUALIFYING RULE
+
+Language marks must NOT be included in the 40-mark Common GS ranking.
+
+The Language score must be displayed separately beside each aspirant's rank.
+
+Example:
+
+Rank| Name| GS Average| Language
+1| Rahul| 32.50| 21/30 PASS
+2| Amit| 30.75| 17/30 PASS
+3| Sumit| 29.50| 08/30 FAIL
+
+IMPORTANT:
+
+- Minimum qualifying Language marks: 9 out of 30.
+- Below 9 marks = FAIL.
+- 9 or above = PASS.
+- Language marks must never increase or decrease the GS ranking.
+- Display Language PASS/FAIL beside the ranking.
+- Show Hindi and English marks separately.
+- Show the combined Language score out of 30.
+- Show qualifying status clearly.
+
+If an aspirant has not attempted the Language Test, show NOT ATTEMPTED rather than FAIL.
+
+PART 8 – FIVE-OPTION MCQ & SPECIAL ANSWER SYSTEM
+
+ALL questions in both Common GS and Language papers must have exactly FIVE options.
+
+Display:
+
+A
+B
+C
+D
+E – DON'T KNOW / पता नहीं
+
+Option E is a special response.
+
+When the aspirant does not know the answer, they can select Option E.
+
+Also provide a separate NOT ATTEMPTED state.
+
+IMPORTANT DIFFERENCE:
+
+1. Option E means the aspirant has consciously selected "I Don't Know".
+2. NOT ATTEMPTED means the aspirant has not selected any option and leaves the question unanswered.
+
+These two states must be stored separately.
+
+ANSWER SCORING RULES
+
+Apply the following scoring system to both the 40-question Common GS paper and the 30-question Language paper.
+
+Answer Status| Marks
+Correct Answer| +1
+Incorrect Answer| -1/3
+Option E – Don't Know| 0
+Completely Unselected / Not Attempted| -1/3
+
+IMPORTANT:
+
+- Every three incorrect answers result in a deduction of one mark.
+- Three completely unselected questions also result in a deduction of one mark.
+- Selecting Option E results in zero marks and no negative marking.
+- Option E must not be counted as an unanswered question.
+- Completely unselected questions must be counted separately.
+- Do not combine incorrect answers and Option E responses.
+- Show the number of correct, incorrect, Don't Know and Not Attempted responses separately.
+
+The total score must be calculated accurately, including fractional marks.
+
+Do not silently round intermediate calculations.
+
+Display scores up to two decimal places.
+
+At final submission, every question must be assigned one of these four statuses.
+
+Provide an Admin-configurable scoring policy, but preserve the above default rules.
+
+PART 9 – QUESTION BANK & BULK IMPORT
+
+Create a dedicated module:
+
+QUESTION BANK & BULK IMPORT.
+
+I want to generate questions using ChatGPT or Google Gemini and import them directly into the application.
+
+Provide:
+
+A. BULK TEXT PASTE
+
+- Large text editor.
+- Paste all 40 questions together.
+- Paste all 30 Language questions separately.
+- Automatically recognize question numbers.
+- Recognize options A, B, C, D, E.
+- Recognize correct answers.
+- Recognize explanations.
+- Recognize subject and topic.
+- Recognize source references.
+
+B. JSON IMPORT
+
+Support structured JSON with exactly five options.
+
+C. MANUAL QUESTION CREATION
+
+Allow authorized users to create questions individually.
+
+D. EXCEL / CSV IMPORT
+
+Provide downloadable import templates.
+
+E. QUESTION VALIDATION
+
+Before publishing, check:
+
+- Missing question text.
+- Missing options.
+- Duplicate questions.
+- Missing correct answers.
+- Incorrect subject distribution.
+- Incorrect number of questions.
+- Missing explanations.
+- Invalid answer keys.
+
+The official Common GS set must contain exactly 40 questions with 8 questions per subject.
+
+The Language set must contain exactly 30 questions with 22 Hindi and 8 English questions.
+
+Do not publish invalid or incomplete sets.
+
+PART 10 – SET CREATION & SHARING
+
+Any authorized question contributor can create a question set using their own display name.
+
+Example:
+
+Set Name: TRE 4.0 Common Mock Test 01
+
+Created By: Rahul Kumar.
+
+Set Name: TRE 4.0 Practice Set 02
+
+Created By: Amit Kumar.
+
+Display:
+
+- Set Name.
+- Creator Name.
+- Creator Profile Photo.
+- Creation Date.
+- Number of Questions.
+- Subject Distribution.
+- Difficulty Level.
+- Number of Attempts.
+- Publication Status.
+
+All published sets must be available to authorized members of the same group.
+
+The set creator's name and profile image must remain attached to the set.
+
+Admin must be able to approve, reject or publish contributed sets.
+
+PART 11 – PREMIUM ONLINE EXAMINATION INTERFACE
+
+Create a clean and professional examination screen.
+
+Show:
+
+- Test Title.
+- Creator Name.
+- Creator Profile Photo.
+- Total Questions.
+- Total Marks.
+- Duration.
+- Start Test.
+
+During examination:
+
+- Question number.
+- Question text.
+- Five options.
+- Previous.
+- Next.
+- Clear Response.
+- Mark for Review.
+- Question Palette.
+- Remaining Time.
+- Answered Count.
+- Incorrectly Unanswered Count.
+- Don't Know Count.
+- Marked for Review Count.
+- Submit Test.
+
+When an option is selected:
+
+- Highlight the option.
+- Automatically save the response.
+- Allow answer changes before final submission.
+- Preserve progress during temporary network interruption.
+
+After submission:
+
+- Lock the attempt.
+- Evaluate answers.
+- Calculate scores.
+- Save the result centrally.
+- Show result summary.
+- Show correct answers after the configured release time.
+
+Prevent duplicate submissions.
+
+PART 12 – COMPLETE TEST PDF DOWNLOAD
+
+THIS FEATURE IS MANDATORY.
+
+After completing any test, provide a button:
+
+DOWNLOAD COMPLETE TEST PDF
+
+The PDF must be professionally formatted.
+
+Include:
+
+1. Test title.
+2. Test creator's name.
+3. Aspirant's name.
+4. Date and time of attempt.
+5. All questions.
+6. All five options.
+7. Aspirant's selected answers.
+8. Correct answers.
+9. Incorrect answers.
+10. Don't Know responses.
+11. Not Attempted questions.
+12. Detailed explanations.
+13. Subject-wise score.
+14. Total score.
+15. Percentage.
+16. Negative marks calculation.
+17. Final result summary.
+
+PDF DOWNLOAD REQUIREMENTS:
+
+- Support Hindi and English Unicode fonts.
+- Proper page numbering.
+- Professional typography.
+- Clean spacing.
+- No cut-off text.
+- No missing questions.
+- Support long explanations.
+- Support question images.
+- Support solution images where applicable.
+
+Provide these options:
+
+- Download Complete Test PDF.
+- Download Question Paper PDF.
+- Download Answer Key PDF.
+- Download My Attempt PDF.
+
+The PDF must be generated from actual published test data and actual submitted responses, not dummy data.
+
+Allow the aspirant to download the PDF to their mobile device and share it through the Android sharing menu.
+
+PART 13 – RANKING IMAGE GENERATOR & WHATSAPP SHARING
+
+THIS IS ALSO A MANDATORY FEATURE.
+
+Create a premium Ranking Card / Result Image Generator.
+
+After a test is completed, allow users to generate a beautiful image containing their rank and score.
+
+The generated image must show:
+
+- Application Name: TRE 4.0.
+- Test Name.
+- Aspirant Name.
+- Profile Photo.
+- Overall Rank.
+- Individual Test Rank.
+- Average Score.
+- Latest Test Score.
+- Correct Answers.
+- Incorrect Answers.
+- Don't Know Count.
+- Not Attempted Count.
+- Language Marks.
+- Language PASS / FAIL.
+- Total Participants.
+- Examination Date.
+
+Example:
+
+TRE 4.0 – RESULT CARD
+
+Rank: 01
+
+Rahul Kumar
+
+Latest Score: 34.67 / 40
+
+Overall Average: 32.85
+
+Language: 19 / 30 – PASS
+
+Total Participants: 200
+
+IMPORTANT:
+
+The result image must look like a professional examination achievement card.
+
+Provide:
+
+1. Generate My Result Image.
+2. Generate Full Group Ranking Image.
+3. Download Result Image.
+4. Share on WhatsApp.
+5. Share using Other Apps.
+
+WHATSAPP SHARING:
+
+Use Android's native Sharesheet and ACTION_SEND with image/jpeg or image/png.
+
+Allow the user to select WhatsApp from the sharing menu.
+
+Do not pretend that a message has been sent automatically.
+
+Let the user confirm sending inside WhatsApp.
+
+The shared image must be generated from real verified database results.
+
+Do not show fake ranks or fake scores.
+
+Provide a setting for public/private result sharing.
+
+PART 14 – DAILY CURRENT AFFAIRS IMAGE BANNER
+
+Create a dedicated home screen section:
+
+DAILY CURRENT AFFAIRS.
+
+Requirements:
+
+- Premium horizontal image slider.
+- Upload daily questions in image format.
+- Support JPG, JPEG, PNG and WEBP.
+- Multiple images per day.
+- Automatic slide movement.
+- Manual swipe.
+- Full-screen image view.
+- Image zoom.
+- Hindi and English content.
+- Daily archive.
+- Date and source information.
+
+Admin must be able to:
+
+- Upload image.
+- Add title.
+- Add date.
+- Add source.
+- Preview.
+- Publish.
+- Edit.
+- Delete.
+- Schedule publication.
+
+All authorized members must see the same published images in real time.
+
+Sources should include PIB official releases, Bihar Government official updates and other reliable official sources.
+
+PART 15 – INTERACTIVE PHOTO QUESTION POLL
+
+Create a separate module:
+
+QUESTION POLL / DOUBT POLL.
+
+Allow any authorized member to create a question poll.
+
+STEP 1: CREATE POLL
+
+Provide a prominent button:
+
+CREATE POLL / सवाल पूछें.
+
+STEP 2: UPLOAD QUESTION IMAGE
+
+Allow:
+
+- Camera capture.
+- Gallery upload.
+- Image preview.
+- Crop.
+- Rotate.
+- Question title.
+- Additional description.
+
+STEP 3: ADD OPTIONS
+
+Provide five editable options:
+
+A, B, C, D, E.
+
+Allow the creator to use fewer options if necessary.
+
+STEP 4: SET CORRECT ANSWER
+
+The question creator must privately select the correct answer.
+
+The correct answer must remain hidden from other participants until finalized and released.
+
+STEP 5: PUBLISH POLL
+
+All authorized members can:
+
+- View the question image.
+- Read the question.
+- Select an option.
+- Submit their vote.
+- View participation count.
+- View poll status.
+
+Allow one vote per user by default.
+
+STEP 6: CREATOR-CONTROLLED ANSWER
+
+The poll creator must have control to:
+
+- Mark the correct option.
+- Change the correct option before finalization.
+- Close the poll.
+- Finalize the answer.
+- Publish the answer.
+- Add explanation.
+
+Admin must have moderation and correction rights with audit logs.
+
+STEP 7: RESULT DISPLAY
+
+After finalization, display:
+
+- Total Votes.
+- Option-wise Votes.
+- Option-wise Percentages.
+- Correct Answer.
+- Incorrect Answer.
+- Creator Name.
+- Final Explanation.
+
+IMPORTANT:
+
+Poll scores must remain separate from official mock test scores and rankings.
+
+PART 16 – IMAGE-BASED SOLUTION UPLOAD
+
+Below each poll, provide:
+
+UPLOAD SOLUTION / समाधान अपलोड करें.
+
+Allow authorized contributors to:
+
+- Capture handwritten solutions.
+- Upload from gallery.
+- Upload multiple images.
+- Preview images.
+- Zoom images.
+- Rotate images.
+- Replace images.
+- Delete their own permitted uploads.
+
+The creator or an authorized contributor can upload the solution.
+
+All group members must be able to view released solution images.
+
+Also provide an optional text explanation.
+
+Store all images in Firebase Storage.
+
+PART 17 – DISCUSSION & COMMENT SYSTEM
+
+Every question and poll must have:
+
+- Comments.
+- Replies.
+- Doubt discussion.
+- Report incorrect question.
+- Report incorrect answer.
+- Suggest correction.
+- Upload explanation.
+- Admin moderation.
+
+Maintain an audit trail for corrections to published questions and answer keys.
+
+PART 18 – CENTRALIZED RESULT & LIVE RANKING
+
+Create a common leaderboard visible to all authorized members of the group.
+
+All users must be able to see everyone else's public scores.
+
+Example:
+
+Rank| Name| GS Average| Language
+1| Rahul Kumar| 34.50| 21 PASS
+2| Amit Kumar| 32.75| 18 PASS
+3| Sumit Kumar| 30.50| 08 FAIL
+4| Rohit Kumar| 29.25| 17 PASS
+
+These are illustrative values only.
+
+RANKING RULES:
+
+1. Highest GS average receives Rank 1.
+2. Second-highest GS average receives Rank 2.
+3. Language marks do not contribute to the ranking.
+4. Language PASS/FAIL appears separately.
+5. Rankings update automatically after eligible test submissions.
+6. All group members see the same common ranking.
+7. Display total tests attempted.
+8. Display latest test score.
+9. Display average score.
+10. Display highest score.
+11. Display overall rank.
+12. Display rank improvement.
+
+AVERAGE SCORE:
+
+Average Score = Total GS Marks Obtained / Number of Eligible Common GS Tests Attempted.
+
+Only comparable common tests must be included in official ranking.
+
+Keep Language performance in a separate database field and reporting module.
+
+Provide:
+
+- Individual Test Ranking.
+- Daily Ranking.
+- Weekly Average Ranking.
+- Monthly Average Ranking.
+- Overall Average Ranking.
+
+Use competition ranking for equal scores.
+
+Use a transparent tie-breaking policy.
+
+Never silently count missing tests as zero. Show tests attempted and tests available separately.
+
+PART 19 – STUDENT-FREE TERMINOLOGY & DASHBOARD
+
+Use the term ASPIRANT throughout.
+
+Create the following home dashboard:
+
+1. Profile and Welcome Name.
+2. Profile Photo.
+3. Daily Current Affairs Image Slider.
+4. Common Mock Tests.
+5. Language Qualifying Test.
+6. Create Question Set.
+7. Question Bank.
+8. Interactive Poll.
+9. Ask a Question.
+10. Group Leaderboard.
+11. My Performance.
+12. All Aspirants' Scores.
+13. Weekly Ranking.
+14. Monthly Ranking.
+15. Download My Test PDF.
+16. My Result Image.
+17. Previous Tests.
+18. Discussion & Solutions.
+19. Notifications.
+
+PART 20 – ADMIN DASHBOARD
+
+Show:
+
+- Total Registered Aspirants.
+- Active Users.
+- Total Groups.
+- Total Question Sets.
+- Published Tests.
+- Total Questions.
+- Total Polls.
+- Total Test Attempts.
+- Average Group Score.
+- Highest Score.
+- Current Top Rank.
+
+Admin controls:
+
+- Manage Aspirants.
+- Manage Groups.
+- Manage Roles.
+- Approve Question Sets.
+- Bulk Import Questions.
+- Publish Common Tests.
+- Publish Language Tests.
+- Manage Answer Keys.
+- Manage Current Affairs.
+- Upload Banner Images.
+- Manage Polls.
+- Review Solutions.
+- View All Scores.
+- Export Reports.
+- Send Notifications.
+
+PART 21 – PERFORMANCE ANALYTICS
+
+Create premium charts and statistics:
+
+- Total Tests Attempted.
+- Latest Test Score.
+- Average Score.
+- Highest Score.
+- Lowest Score.
+- Current Rank.
+- Previous Rank.
+- Rank Improvement.
+- Subject-wise Average.
+- Accuracy.
+- Weekly Performance.
+- Monthly Performance.
+- Language Score.
+- Hindi Score.
+- English Score.
+- Language Qualification Status.
+
+Show the user's strengths and weaker subjects using actual test performance.
+
+PART 22 – SECURITY & DATA INTEGRITY
+
+Implement:
+
+- Firebase Authentication.
+- Secure Firestore Rules.
+- Firebase Storage Rules.
+- Role-based permissions.
+- Group-based access.
+- Protected answer keys.
+- Server-side score calculation.
+- Server-side rank calculation.
+- Duplicate submission prevention.
+- Duplicate vote prevention.
+- Audit logs.
+- Secure image uploads.
+- Input validation.
+- Error handling.
+- Network recovery.
+- Efficient Firestore queries.
+- Pagination.
+- Required Firestore indexes.
+
+Never allow a client to change its own official marks, ranking or admin role.
+
+Never expose the answer key before the configured result-release time.
+
+Maintain privacy of personal email addresses.
+
+PART 23 – PREMIUM UI / UX DESIGN
+
+The complete application must have a premium professional appearance.
+
+Design requirements:
+
+- Material Design 3.
+- Modern premium glassmorphism.
+- Elegant navy blue and indigo accents.
+- White and dark themes.
+- Clean typography.
+- Smooth animations.
+- Beautiful image banners.
+- Premium profile cards.
+- Attractive examination screen.
+- Professional leaderboard.
+- Beautiful result cards.
+- Modern poll interface.
+- Clean image preview.
+- Responsive layouts.
+- Consistent spacing.
+- No unnecessary blank spaces.
+- No overlapping content.
+- No broken navigation.
+- Fast loading.
+
+Language support:
+
+- Hindi.
+- English.
+- Hindi + English.
+
+All screens must support bilingual text correctly.
+
+PART 24 – FINAL TESTING & DELIVERY
+
+Before considering the application complete:
+
+1. Test multiple Gmail accounts.
+2. Test different mobile devices.
+3. Verify centralized Firebase connectivity.
+4. Verify profile photo upload.
+5. Verify display name.
+6. Verify group membership.
+7. Verify bulk question import.
+8. Verify five-option MCQs.
+9. Verify 40-question Common GS tests.
+10. Verify 30-question Language tests.
+11. Verify 22 Hindi + 8 English distribution.
+12. Verify negative marking.
+13. Verify Don't Know and Not Attempted separately.
+14. Verify Language PASS/FAIL at 9 marks.
+15. Verify Language exclusion from GS ranking.
+16. Verify centralized average scores.
+17. Verify real-time ranking.
+18. Verify complete test PDF generation.
+19. Verify result image generation.
+20. Verify WhatsApp image sharing.
+21. Verify Current Affairs image slider.
+22. Verify poll image uploading.
+23. Verify poll voting.
+24. Verify creator-controlled answer finalization.
+25. Verify image-based solution uploads.
+26. Verify 200 simulated user records.
+27. Test concurrent submissions.
+28. Test network interruption recovery.
+29. Test Firebase Security Rules.
+30. Fix all critical bugs and crashes.
+
+Do not use dummy data in production.
+
+Do not claim any functionality is complete until it has actually been implemented and tested.
+
+If Firebase configuration or external API credentials are missing, clearly explain the setup process.
+
+Deliver:
+
+- Complete Android source code.
+- Firebase setup instructions.
+- Database schema.
+- Security Rules.
+- Cloud Functions source code.
+- APK build instructions.
+- Signed APK generation instructions.
+
+==================================================
+FINAL PROJECT OBJECTIVE
+
+Build one complete, centralized, premium TRE 4.0 ASPIRANT PREPARATION PLATFORM.
+
+The application must allow 200+ aspirants to:
+
+- Log in using individual Gmail accounts.
+- Register their own display names.
+- Upload their profile photos.
+- Join a common examination group.
+- Create and share question sets.
+- Import questions from ChatGPT and Google Gemini.
+- Attempt 40-question Common GS tests.
+- Attempt 30-mark Language Qualifying Tests.
+- Answer five-option MCQs.
+- Receive automatic negative marking.
+- Select Don't Know when they do not know an answer.
+- Receive a separate penalty for completely unselected questions.
+- View everyone's scores and ranking.
+- Calculate average scores automatically.
+- Download complete test PDFs.
+- Generate ranking images.
+- Share ranking images through WhatsApp.
+- View daily image-based current affairs.
+- Create photo-based interactive polls.
+- Vote on other members' questions.
+- Finalize answers as question creators.
+- Upload image-based solutions.
+- Discuss questions collaboratively.
+
+ALL USERS MUST CONNECT TO ONE CENTRALIZED FIREBASE PROJECT AND DATABASE.
+
+DEVELOPMENT PRIORITY:
+
+PHASE 1: Firebase Backend + Login + Profile + Group System.
+
+PHASE 2: Question Bank + Test Creation + Examination Engine.
+
+PHASE 3: Result + Average Score + Ranking + PDF + WhatsApp Sharing.
+
+PHASE 4: Current Affairs + Interactive Poll + Image Solutions.
+
+PHASE 5: Complete Integration + Security + Performance + Bug Fixing + APK.
+
+Do not skip phases.
+
+Do not remove any requested feature.
+
+Do not deliver a non-functional prototype.
+
+Build a complete, reliable, scalable and production-ready Android application.

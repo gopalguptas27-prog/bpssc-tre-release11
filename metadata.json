@@ -1,0 +1,6 @@
+{
+  "name": "TRE 4.0",
+  "description": "TRE 4.0 Aspirant Test & Ranking Platform with Premium Cooling Glass UI, Founded by Gopal Gupta.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
